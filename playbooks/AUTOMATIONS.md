@@ -28,19 +28,31 @@ Single source of truth for every automation built in the `playbooks/` set. **33 
 | CATALYST Events (`app6ru0ATU07D5eSG`) | Waitlist | `tblOUbsG9GEHpg0lY` | Email, Name, Referral Code, Referred By, Referral Count, Status, Source, Signed Up At | Catalyst 01, 07 |
 | CATALYST Events (`app6ru0ATU07D5eSG`) | Feedback Backlog | `tblgXeLLfE67mRua5` | Summary, Category, Sentiment, Severity, Tags, Raw Feedback, Reporter, Vote Count, Status, Discord Thread | Catalyst 05, 07, 09 |
 | SNEAKFEST 2026 (`appCmR6YaOmAD5N98`) | Attendees | `tblaj0m3AqDDBrk93` | Email, Name, Ticket Tier, Order ID, Quantity, QR Token, Checked In, Checked In At, Gate, Purchased At | Sneaker Fest 01, 05, 06 |
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Key Pool | `tblketM7S2I06aFWu` | Key, Status, Assigned To, Creator Tier, Assigned At ✅ | Catalyst 06 |
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Playtest Slots | `tbleF18grtq3TgxAv` | Session, Starts At, Seats Left, Status, Session URL ✅ | Catalyst 08 |
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Players | `tbl5ay1d9aaa6IaO6` | Email, Name, Status, Last Seen, Last Milestone, Winback Sent, Winback Sent At ✅ | Catalyst 10 |
+| SNEAKFEST 2026 (`appCmR6YaOmAD5N98`) | Waitlist Notify | `tblu2h5dHGw2UsS4a` | Email, Product Handle ✅ — **add manually:** Size, Notified, Notified At | Sneaker Fest 03, 08 |
+| SNEAKFEST 2026 (`appCmR6YaOmAD5N98`) | Help Log | `tblmRWs4fBnRPc2pT` | Summary ✅ — **add manually:** Type, Location, Urgent, Status | Sneaker Fest 09 |
+
+> **Zapier task quota reached.** Field creation runs as Zapier "tasks"; the free plan's monthly allotment was exhausted mid-batch, so 7 fields (Waitlist Notify: Size, Notified, Notified At; Help Log: Type, Location, Urgent, Status) still need to be added — 30 seconds each in the Airtable UI, or re-run next month / after a Zapier upgrade.
 
 > The SNEAKFEST base already has Tickets, Exhibitors, Vendors & Logistics, Marketing, Media & Press, Team, Speakers, Budget/P&L, Master Timeline; the CATALYST base already has Events, Vendors, Attendees, Resources.
 
-**15 Zapier skills saved (run any by name):**
+**20 Zapier skills saved (run any by name):**
 
 | Skill | Automation | Apps |
 |-------|-----------|------|
 | `catalyst waitlist signup` | Catalyst 01 | Airtable + Resend |
 | `catalyst feedback intake` | Catalyst 05 | Airtable |
+| `catalyst creator keys` | Catalyst 06 | Airtable + Resend |
 | `catalyst kpi digest` | Catalyst 07 | Airtable + Resend |
+| `catalyst playtest scheduler` | Catalyst 08 | Airtable + Resend |
+| `catalyst churn winback` | Catalyst 10 | Airtable + Resend |
 | `sneakerfest ticket onboarding` | Sneaker Fest 01 | Airtable + Resend |
 | `sneakerfest post-event followup` | Sneaker Fest 05 | Airtable + Resend |
 | `sneakerfest door checkin` | Sneaker Fest 06 | Airtable |
+| `sneakerfest restock matcher` | Sneaker Fest 03/08 | Airtable + Resend |
+| `sneakerfest event support` | Sneaker Fest 09 | Airtable + Resend |
 | `github issue triage` | Dev-Ops 01 | GitHub |
 | `github ci failure alert` | Dev-Ops 02 | GitHub |
 | `github release notes` | Dev-Ops 03 | GitHub |
@@ -50,6 +62,8 @@ Single source of truth for every automation built in the `playbooks/` set. **33 
 | `github contributor welcome` | Dev-Ops 07 | GitHub |
 | `council convention check` | Dev-Ops 08 | GitHub |
 | `sponsor lead intake` | Shared 03 | HubSpot |
+
+> `sneakerfest restock matcher` and `sneakerfest event support` are fully wired but their tables (Waitlist Notify, Help Log) are missing the 7 fields above — add those to make them execute cleanly.
 
 ### Remaining automations — what each still needs
 
