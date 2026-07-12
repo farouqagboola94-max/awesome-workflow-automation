@@ -38,7 +38,7 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 
 > The SNEAKFEST base already has Tickets, Exhibitors, Vendors & Logistics, Marketing, Media & Press, Team, Speakers, Budget/P&L, Master Timeline; the CATALYST base already has Events, Vendors, Attendees, Resources.
 
-**25 Zapier skills saved (run any by name):**
+**37 Zapier skills saved (run any by name):**
 
 | Skill | Automation | Apps |
 |-------|-----------|------|
@@ -67,6 +67,22 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 | `youtube cross promote` | Growth 04 | YouTube + Instagram + Gmail |
 | `lead scoring routing` | Ops 08 | HubSpot |
 | `testimonial to instagram` | Growth 10 | Instagram |
+| `cross project digest` | Ops 10 | Airtable + GitHub + Resend — **runnable now** |
+| `contract renewal reminder` | Ops 05 | Airtable + Resend — **runnable now** |
+| `post purchase review request` | Growth 05 | Resend — **runnable now** |
+| `revenue reconciliation` | Ops 02 | Airtable + Resend † |
+| `weekly pnl snapshot` | Ops 04 | Airtable + Resend † |
+| `expense receipt capture` | Ops 03 | Airtable † |
+| `devlog seo social` | Growth 01 | Airtable † |
+| `content calendar generator` | Growth 02 | Airtable † |
+| `meeting notes to tasks` | Growth 07 | Airtable † |
+| `faq autoresponder` | Growth 08 | Airtable † |
+| `newsletter compile` | Growth 09 | Airtable + Resend † |
+| `duplicate contact cleanup` | Ops 09 | Airtable † |
+
+**Not skill-ified** (need an app that isn't connected in Zapier): Ops 01 invoicing (QuickBooks), Ops 06 Sheets backup (Google Sheets), Ops 07 KPI alert (Slack).
+
+† Depends on an `appShared` base/table (`Orders`, `Expenses`, `Contacts`, `Tasks`, `FAQ`, `Content Calendar`) that still needs creating — blocked by the exhausted Zapier task quota. The skill is saved and ready; it executes once those tables exist and the quota resets.
 
 > `sneakerfest restock matcher` and `sneakerfest event support` are fully wired but their tables (Waitlist Notify, Help Log) are missing the 7 fields above — add those to make them execute cleanly.
 >
