@@ -38,7 +38,7 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 
 > The SNEAKFEST base already has Tickets, Exhibitors, Vendors & Logistics, Marketing, Media & Press, Team, Speakers, Budget/P&L, Master Timeline; the CATALYST base already has Events, Vendors, Attendees, Resources.
 
-**20 Zapier skills saved (run any by name):**
+**25 Zapier skills saved (run any by name):**
 
 | Skill | Automation | Apps |
 |-------|-----------|------|
@@ -62,8 +62,15 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 | `github contributor welcome` | Dev-Ops 07 | GitHub |
 | `council convention check` | Dev-Ops 08 | GitHub |
 | `sponsor lead intake` | Shared 03 | HubSpot |
+| `email triage autodraft` | Growth 06 | Gmail |
+| `instagram scheduler` | Growth 03 | Instagram + Airtable |
+| `youtube cross promote` | Growth 04 | YouTube + Instagram + Gmail |
+| `lead scoring routing` | Ops 08 | HubSpot |
+| `testimonial to instagram` | Growth 10 | Instagram |
 
 > `sneakerfest restock matcher` and `sneakerfest event support` are fully wired but their tables (Waitlist Notify, Help Log) are missing the 7 fields above — add those to make them execute cleanly.
+>
+> The 5 skills above map the new Ops/Growth automations onto already-connected apps (Gmail, Instagram, YouTube, HubSpot). Gmail/YouTube skills create **drafts** (never auto-send). Execution consumes Zapier tasks, so they run once the quota resets or is upgraded.
 
 ### Remaining automations — what each still needs
 
