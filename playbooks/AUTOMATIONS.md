@@ -16,8 +16,24 @@ Single source of truth for every automation built in the `playbooks/` set. **33 
 
 ### What's actually live
 
-- **Make webhook** — `https://hook.us2.make.com/8uqh16nstid9y4ubw52w5guxmk02de2q` (hook id `2566464`)
-- **Make scenario** — "Catalyst — Feedback Intake (live proof)" (id `5641203`), **active**. Native modules only (webhook → JSON response), so it runs with zero app connections on the Free plan.
+**Make (us2.make.com):**
+- **Webhook** — `https://hook.us2.make.com/8uqh16nstid9y4ubw52w5guxmk02de2q` (hook id `2566464`)
+- **Scenario** — "Catalyst — Feedback Intake (live proof)" (id `5641203`), **active**. Native modules only (webhook → JSON response), runs with zero app connections on the Free plan.
+
+**Zapier — 8 connected apps (auth bound):** Airtable, Gmail, Resend, HubSpot, GitHub (`farouqagboola94-max`), Notion, Instagram, YouTube.
+
+**Airtable backing tables created (real, in your existing bases):**
+| Base | Table | ID | Powers automations |
+|------|-------|----|--------------------|
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Waitlist | `tblOUbsG9GEHpg0lY` | Catalyst 01, 07 |
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Feedback Backlog | `tblgXeLLfE67mRua5` | Catalyst 05, 07, 09 |
+| SNEAKFEST 2026 (`appCmR6YaOmAD5N98`) | Attendees | `tblaj0m3AqDDBrk93` | Sneaker Fest 01, 05, 06 |
+
+> Tables are created with their **primary field**; add the remaining fields (listed in each table's Airtable description) in the Airtable UI, or ask me to populate records. The SNEAKFEST base already has Tickets, Exhibitors, Vendors & Logistics, Marketing, Media & Press, Team, Speakers, Budget/P&L, and Master Timeline; the CATALYST base already has Events, Vendors, Attendees, Resources.
+
+**Zapier skills saved (run on demand):**
+- `catalyst feedback intake` — triage a feedback message → record in Feedback Backlog.
+- `sneakerfest ticket onboarding` — create Attendees record + Resend confirmation email.
 
 ### Hard limits discovered (why "all 33 auto-running" isn't possible yet)
 
