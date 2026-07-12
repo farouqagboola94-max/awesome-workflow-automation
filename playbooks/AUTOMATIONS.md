@@ -11,10 +11,24 @@ Single source of truth for every automation built in the `playbooks/` set. **33 
 | Platform | Status | Note |
 |----------|--------|------|
 | n8n (definitions) | ✅ Saved | All 33 committed to `playbooks/`, JSON-validated |
-| Zapier | ⚠️ Blocked | Account connected but **0 apps/actions enabled** — connect the apps below, then these can be provisioned live |
-| Make | ⚠️ Blocked | Make connector **not authorized** in this session — authorize it (claude.ai connector settings), then scenarios can be created |
+| Make | 🟡 Live (capped) | Account authenticated (Farouq Agboola). **Free plan caps at 2 scenarios / 1000 ops-mo / 1 data store / no app connections.** 1 live scenario provisioned as proof (below). |
+| Zapier | 🟡 Live (on-demand) | **8 apps auto-provisioned with auth bound**: Airtable, Gmail, Resend, HubSpot, GitHub, Notion, Instagram, YouTube (219 actions). MCP executes actions **on demand**; it does not create standing event-triggered Zaps. |
 
-**To go live on Zapier/Make:** connect the relevant apps (Airtable, Gmail/Resend, Slack, Discord, OpenAI, Shopify, HubSpot, GitHub, X, QuickBooks) in the respective platform, then re-run this session — the weekly report-back loop will detect the new connections and flag which workflows are ready to provision.
+### What's actually live
+
+- **Make webhook** — `https://hook.us2.make.com/8uqh16nstid9y4ubw52w5guxmk02de2q` (hook id `2566464`)
+- **Make scenario** — "Catalyst — Feedback Intake (live proof)" (id `5641203`), **active**. Native modules only (webhook → JSON response), so it runs with zero app connections on the Free plan.
+
+### Hard limits discovered (why "all 33 auto-running" isn't possible yet)
+
+1. **Make Free plan = 2 scenarios maximum.** 33 standing scenarios need a paid tier (Core/Pro) and Make-side app connections (Airtable, Slack, OpenAI, Discord, …), which are not yet added (`hasAddedApp: false`).
+2. **Zapier MCP executes actions on demand** (create record, send email, etc.) rather than creating persistent trigger→action Zaps. Standing Zaps are built in Zapier's UI/API, not this interface.
+
+### Path to lift the caps
+
+- **Make:** upgrade the org to a paid tier, then add app connections in Make → I can port the remaining n8n definitions to scenarios.
+- **Zapier:** apps are already connected — I can execute real actions now (e.g., create the Airtable backing tables, send emails, create HubSpot deals) and save reusable **Zapier skills** per automation.
+- The weekly report-back loop will re-check both and flag what's newly deployable.
 
 ## Report-back loop
 
