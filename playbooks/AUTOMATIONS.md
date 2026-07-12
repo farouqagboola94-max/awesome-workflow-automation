@@ -22,18 +22,51 @@ Single source of truth for every automation built in the `playbooks/` set. **33 
 
 **Zapier — 8 connected apps (auth bound):** Airtable, Gmail, Resend, HubSpot, GitHub (`farouqagboola94-max`), Notion, Instagram, YouTube.
 
-**Airtable backing tables created (real, in your existing bases):**
-| Base | Table | ID | Powers automations |
-|------|-------|----|--------------------|
-| CATALYST Events (`app6ru0ATU07D5eSG`) | Waitlist | `tblOUbsG9GEHpg0lY` | Catalyst 01, 07 |
-| CATALYST Events (`app6ru0ATU07D5eSG`) | Feedback Backlog | `tblgXeLLfE67mRua5` | Catalyst 05, 07, 09 |
-| SNEAKFEST 2026 (`appCmR6YaOmAD5N98`) | Attendees | `tblaj0m3AqDDBrk93` | Sneaker Fest 01, 05, 06 |
+**Airtable backing tables created with FULL field schemas (real, in your existing bases):**
+| Base | Table | ID | Fields | Powers |
+|------|-------|----|--------|--------|
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Waitlist | `tblOUbsG9GEHpg0lY` | Email, Name, Referral Code, Referred By, Referral Count, Status, Source, Signed Up At | Catalyst 01, 07 |
+| CATALYST Events (`app6ru0ATU07D5eSG`) | Feedback Backlog | `tblgXeLLfE67mRua5` | Summary, Category, Sentiment, Severity, Tags, Raw Feedback, Reporter, Vote Count, Status, Discord Thread | Catalyst 05, 07, 09 |
+| SNEAKFEST 2026 (`appCmR6YaOmAD5N98`) | Attendees | `tblaj0m3AqDDBrk93` | Email, Name, Ticket Tier, Order ID, Quantity, QR Token, Checked In, Checked In At, Gate, Purchased At | Sneaker Fest 01, 05, 06 |
 
-> Tables are created with their **primary field**; add the remaining fields (listed in each table's Airtable description) in the Airtable UI, or ask me to populate records. The SNEAKFEST base already has Tickets, Exhibitors, Vendors & Logistics, Marketing, Media & Press, Team, Speakers, Budget/P&L, and Master Timeline; the CATALYST base already has Events, Vendors, Attendees, Resources.
+> The SNEAKFEST base already has Tickets, Exhibitors, Vendors & Logistics, Marketing, Media & Press, Team, Speakers, Budget/P&L, Master Timeline; the CATALYST base already has Events, Vendors, Attendees, Resources.
 
-**Zapier skills saved (run on demand):**
-- `catalyst feedback intake` — triage a feedback message → record in Feedback Backlog.
-- `sneakerfest ticket onboarding` — create Attendees record + Resend confirmation email.
+**15 Zapier skills saved (run any by name):**
+
+| Skill | Automation | Apps |
+|-------|-----------|------|
+| `catalyst waitlist signup` | Catalyst 01 | Airtable + Resend |
+| `catalyst feedback intake` | Catalyst 05 | Airtable |
+| `catalyst kpi digest` | Catalyst 07 | Airtable + Resend |
+| `sneakerfest ticket onboarding` | Sneaker Fest 01 | Airtable + Resend |
+| `sneakerfest post-event followup` | Sneaker Fest 05 | Airtable + Resend |
+| `sneakerfest door checkin` | Sneaker Fest 06 | Airtable |
+| `github issue triage` | Dev-Ops 01 | GitHub |
+| `github ci failure alert` | Dev-Ops 02 | GitHub |
+| `github release notes` | Dev-Ops 03 | GitHub |
+| `github stale sweeper` | Dev-Ops 04 | GitHub |
+| `github link check report` | Dev-Ops 05 | GitHub |
+| `github contribution lint` | Dev-Ops 06 | GitHub |
+| `github contributor welcome` | Dev-Ops 07 | GitHub |
+| `council convention check` | Dev-Ops 08 | GitHub |
+| `sponsor lead intake` | Shared 03 | HubSpot |
+
+### Remaining automations — what each still needs
+
+These have n8n definitions saved but no Zapier skill yet, because they depend on an app **not connected in Zapier** or an Airtable table not yet created:
+
+| Automation | Blocker |
+|-----------|---------|
+| Catalyst 02 community moderation, 09 bug→Discord | **Discord** not connected |
+| Catalyst 03 devlog publishing | **X/Discord** not connected (Notion + email parts are runnable) |
+| Catalyst 04 incident monitoring | **Sentry / Jira / PagerDuty / Slack** not connected |
+| Catalyst 06 creator keys, 08 playtest, 10 churn | need Airtable tables `Key Pool` / `Slots` / `Players` (say the word and I'll create them like the 3 above) |
+| Sneaker Fest 02 vendor intake | e-sign + QuickBooks not connected (Airtable + email parts runnable) |
+| Sneaker Fest 03 drop alerts, 04 UGC, 08 restock | **X / social listening** not connected; need `Waitlist Notify` / `UGC` tables |
+| Sneaker Fest 07 deposit reminder, 09 event support | need `Vendors` extension / `Help Log` table |
+| Shared 01 cart recovery, 02 support router, 04 outreach, 05 scheduler, 06 bounce | need `appShared` tables (`Orders`, `Tickets`, `Outreach`, `Content Calendar`, `Contacts`) |
+
+**To finish these:** either connect the missing apps in Zapier (Discord, Slack, X, Sentry) or ask me to create the remaining Airtable tables — then I'll add a skill for each.
 
 ### Hard limits discovered (why "all 33 auto-running" isn't possible yet)
 
