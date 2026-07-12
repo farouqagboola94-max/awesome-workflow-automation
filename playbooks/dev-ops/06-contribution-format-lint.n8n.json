@@ -1,0 +1,17 @@
+{
+  "name": "Dev-Ops — Contribution Format Lint",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "gh-pr-opened", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "PR Opened Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "gh-pr-opened" },
+    { "parameters": { "url": "={{ $json.body.pull_request.diff_url }}", "options": {} }, "id": "n2", "name": "Fetch PR Diff", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-640, 300] },
+    { "parameters": { "jsCode": "// Check added list entries follow: `- [RESOURCE](LINK) — DESCRIPTION.`\nconst diff = $input.first().json.data || $input.first().json.body || '';\nconst added = diff.split('\\n').filter(l => l.startsWith('+') && l.trim().startsWith('+- ['));\nconst problems = [];\nconst fmt = /^\\+-\\s\\*{0,2}\\[[^\\]]+\\]\\(https?:\\/\\/[^)]+\\)\\*{0,2}\\s[—-]\\s.+\\.$/;\nfor (const line of added) {\n  if (!fmt.test(line.replace(/\\*\\*/g, ''))) problems.push(line.replace(/^\\+/, '').trim());\n}\nreturn [{ json: { ok: problems.length === 0, problems, checked: added.length } }];" }, "id": "n3", "name": "Lint Entries", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-440, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.ok }}", "rightValue": "true", "operator": { "type": "boolean", "operation": "false", "singleValue": true } } ], "combinator": "and" }, "options": {} }, "id": "n4", "name": "Has Problems?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-240, 300] },
+    { "parameters": { "resource": "issue", "operation": "createComment", "owner": "={{ $('PR Opened Webhook').item.json.body.repository.owner.login }}", "repository": "={{ $('PR Opened Webhook').item.json.body.repository.name }}", "issueNumber": "={{ $('PR Opened Webhook').item.json.body.pull_request.number }}", "body": "=Thanks for the PR! A couple of entries don't match the required format `- [RESOURCE](LINK) — DESCRIPTION.` (see CONTRIBUTING.md):\n\n{{ $json.problems.map(p => '- `' + p + '`').join('\\n') }}\n\nPlease also confirm entries are ordered alphabetically. 🙏" }, "id": "n5", "name": "Comment Lint Result", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [-20, 220] }
+  ],
+  "connections": {
+    "PR Opened Webhook": { "main": [[{ "node": "Fetch PR Diff", "type": "main", "index": 0 }]] },
+    "Fetch PR Diff": { "main": [[{ "node": "Lint Entries", "type": "main", "index": 0 }]] },
+    "Lint Entries": { "main": [[{ "node": "Has Problems?", "type": "main", "index": 0 }]] },
+    "Has Problems?": { "main": [[{ "node": "Comment Lint Result", "type": "main", "index": 0 }], []] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "devops-06-format-lint" }
+}

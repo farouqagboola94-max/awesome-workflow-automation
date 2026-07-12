@@ -1,0 +1,18 @@
+{
+  "name": "Shared — Sponsor / Partner Lead Intake",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "sponsor-lead", "responseMode": "responseNode", "options": {} }, "id": "n1", "name": "Sponsor Form Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "sponsor-lead" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Qualify an event sponsorship lead. Return strict JSON: {\"tier\":\"platinum|gold|silver|unqualified\",\"fitReason\":\"one line\",\"suggestedNextStep\":\"one line\"}. Judge on budget signals, brand relevance to sneakers/gaming, and audience overlap.", "role": "system" }, { "content": "=Company: {{ $json.body.company }}\nBudget: {{ $json.body.budget }}\nGoals: {{ $json.body.goals }}\nWebsite: {{ $json.body.website }}" } ] }, "jsonOutput": true, "options": { "temperature": 0 } }, "id": "n2", "name": "AI Qualify Lead", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-640, 300] },
+    { "parameters": { "resource": "deal", "operation": "create", "additionalFields": {} }, "id": "n3", "name": "Create HubSpot Deal", "type": "n8n-nodes-base.hubspot", "typeVersion": 2.1, "position": [-420, 220] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $('AI Qualify Lead').item.json.message.content.tier }}", "rightValue": "platinum,gold", "operator": { "type": "string", "operation": "regex" } } ], "combinator": "and" }, "options": {} }, "id": "n4", "name": "High-Value?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-200, 220] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "partnerships", "mode": "name" }, "text": "=:handshake: *{{ $('AI Qualify Lead').item.json.message.content.tier }}* sponsor lead: *{{ $('Sponsor Form Webhook').item.json.body.company }}* — {{ $('AI Qualify Lead').item.json.message.content.fitReason }}. Next: {{ $('AI Qualify Lead').item.json.message.content.suggestedNextStep }}", "otherOptions": {} }, "id": "n5", "name": "Alert Partnerships", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [20, 140] },
+    { "parameters": { "respondWith": "json", "responseBody": "={{ { \"status\": \"received\" } }}", "options": {} }, "id": "n6", "name": "Acknowledge", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [20, 320] }
+  ],
+  "connections": {
+    "Sponsor Form Webhook": { "main": [[{ "node": "AI Qualify Lead", "type": "main", "index": 0 }]] },
+    "AI Qualify Lead": { "main": [[{ "node": "Create HubSpot Deal", "type": "main", "index": 0 }]] },
+    "Create HubSpot Deal": { "main": [[{ "node": "High-Value?", "type": "main", "index": 0 }]] },
+    "High-Value?": { "main": [[{ "node": "Alert Partnerships", "type": "main", "index": 0 }, { "node": "Acknowledge", "type": "main", "index": 0 }], [{ "node": "Acknowledge", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "shared-03-sponsor-intake" }
+}

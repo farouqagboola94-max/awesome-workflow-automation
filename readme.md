@@ -388,11 +388,15 @@ Key stats:
 
 ## 🎪 Event Automation Playbooks
 
-> Ready-to-import, end-to-end workflows for real events — built on n8n, mappable 1:1 to Make or Zapier. Not just diagrams: webhook triggers, branching logic, AI classification/triage, dedupe, and multi-channel fan-out are all implemented. See **[playbooks/](./playbooks/)**.
+> **33 ready-to-import, end-to-end workflows** for real events and the repos themselves — built on n8n, mappable 1:1 to Make or Zapier. Not just diagrams: webhook triggers, branching logic, AI classification/triage, dedupe, and multi-channel fan-out are all implemented. Full index in **[AUTOMATIONS.md](./playbooks/AUTOMATIONS.md)**; browse **[playbooks/](./playbooks/)**.
 
-- **[⚡ Catalyst: The Awakening](./playbooks/catalyst-the-awakening/)** — 7 workflows for a game / immersive-experience launch: viral waitlist funnel, AI community moderation, one-to-many devlog publishing, launch-day incident response, feedback→roadmap loop, creator-key distribution, and a daily KPI digest.
+- **[⚡ Catalyst: The Awakening](./playbooks/catalyst-the-awakening/)** — 10 workflows for a game / immersive-experience launch: waitlist funnel, AI community moderation, devlog publishing, incident response, feedback→roadmap loop, creator-key distribution, daily KPI digest, playtest scheduler, bug→Discord threads, and churn win-back.
 
-- **[👟 Sneaker Fest](./playbooks/sneaker-fest/)** — 6 workflows for a sneaker convention: ticket-purchase onboarding, AI-screened vendor/booth intake, drop/restock alerts, UGC aggregation with hype rewards, post-event nurture, and door check-in with live capacity.
+- **[👟 Sneaker Fest](./playbooks/sneaker-fest/)** — 9 workflows for a sneaker convention: ticket onboarding, AI-screened vendor/booth intake, drop/restock alerts, UGC aggregation, post-event nurture, door check-in, deposit reminders, size-aware restock matching, and event-day support.
+
+- **[🛠️ Dev-Ops](./playbooks/dev-ops/)** — 8 workflows that maintain the repos: issue AI triage, CI-failure alerts, release notes on tag, stale sweeper, awesome-list dead-link checker, contribution format lint, contributor welcome, and a council-agent convention validator.
+
+- **[🔁 Shared](./playbooks/shared/)** — 6 cross-event workflows: abandoned-checkout recovery, AI support routing, sponsor lead intake, press outreach, social scheduling, and email bounce handling.
 
 ---
 

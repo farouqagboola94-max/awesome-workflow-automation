@@ -13,6 +13,9 @@ Seven production-shaped **n8n** workflows covering the full lifecycle of a game 
 | 5 | Feedback → Roadmap Loop | Feedback webhook | OpenAI + Airtable + Slack | [`05-feedback-roadmap-loop.n8n.json`](./05-feedback-roadmap-loop.n8n.json) |
 | 6 | Creator / Streamer Key Distribution | Creator application webhook | OpenAI + Airtable + Email + Slack | [`06-creator-key-distribution.n8n.json`](./06-creator-key-distribution.n8n.json) |
 | 7 | Daily Community & KPI Digest | Schedule (daily 08:00) | Airtable + Sentry + Slack + Email | [`07-daily-kpi-digest.n8n.json`](./07-daily-kpi-digest.n8n.json) |
+| 8 | Playtest Scheduler | Playtest signup webhook | Airtable + Email | [`08-playtest-scheduler.n8n.json`](./08-playtest-scheduler.n8n.json) |
+| 9 | Bug → Discord Tracking Thread | Confirmed-bug webhook | Discord + Airtable + Slack | [`09-bug-to-discord-thread.n8n.json`](./09-bug-to-discord-thread.n8n.json) |
+| 10 | Early-Access Churn Win-Back | Schedule (weekly) | Airtable + OpenAI + Email | [`10-churn-winback.n8n.json`](./10-churn-winback.n8n.json) |
 
 ---
 
@@ -93,6 +96,24 @@ Seven production-shaped **n8n** workflows covering the full lifecycle of a game 
 - It reads the same Airtable bases the waitlist (#1) and feedback (#5) workflows write to, so the digest is a free byproduct of the pipeline you already run.
 - Error volume drives a 🟢/🟡/🔴 health signal (thresholds tunable in *Format Digest*).
 - Referral % surfaces whether your viral loop (#1) is actually compounding day over day.
+
+## 8. Playtest Scheduler
+
+**Goal:** self-serve playtest booking against a finite pool of session slots, with automatic waitlisting when full.
+
+**Flow:** `Signup webhook → find the earliest open slot with seats → if available, decrement seats + email the build/NDA/voice link + confirm; else return a waitlist response`. Seats decrement atomically so a slot never oversells.
+
+## 9. Bug → Discord Tracking Thread
+
+**Goal:** turn a confirmed high-severity bug into a dedicated Discord forum thread the community and team can follow.
+
+**Flow:** `Confirmed-bug webhook → if high severity → create a Discord forum thread with repro details → link the thread back to the Airtable backlog item (status "Tracking") → ping #engineering`. Pairs with #5 (feedback loop), which is where confirmed bugs originate.
+
+## 10. Early-Access Churn Win-Back
+
+**Goal:** re-engage players who've gone quiet before they churn for good.
+
+**Flow:** `Weekly → find Active players not seen in 14 days who haven't had a win-back yet → AI drafts a warm, personalized 60-word email teasing what's new → send → mark win-back sent` (so nobody gets it twice).
 
 ---
 

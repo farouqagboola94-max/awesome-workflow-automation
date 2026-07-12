@@ -1,0 +1,19 @@
+{
+  "name": "Shared — Abandoned Checkout Recovery",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "checkout-abandoned", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Checkout Abandoned Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "checkout-abandoned" },
+    { "parameters": { "jsCode": "const b = $input.first().json.body || $input.first().json;\nreturn [{ json: { email: (b.email||'').toLowerCase(), name: b.name||'there', cartUrl: b.abandoned_checkout_url || b.recovery_url || '', total: b.total_price || b.total || '', items: (b.line_items||[]).map(i=>i.title).join(', ') } }];" }, "id": "n2", "name": "Parse Cart", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-640, 300] },
+    { "parameters": { "amount": 1, "unit": "hours" }, "id": "n3", "name": "Wait 1h", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [-440, 300], "webhookId": "recover-wait-1h" },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Orders", "mode": "list" }, "filterByFormula": "={{ \"AND({Email}='\" + $('Parse Cart').item.json.email + \"', IS_AFTER({Created}, DATEADD(NOW(),-2,'hours')))\" }}", "options": {} }, "id": "n4", "name": "Did They Buy?", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-240, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "empty", "singleValue": true } } ], "combinator": "and" }, "options": {} }, "id": "n5", "name": "Still Abandoned?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-40, 300] },
+    { "parameters": { "fromEmail": "shop@example.com", "toEmail": "={{ $('Parse Cart').item.json.email }}", "subject": "You left something behind 👀", "html": "=<p>Hey {{ $('Parse Cart').item.json.name }}, your cart ({{ $('Parse Cart').item.json.items }}) is still saved. Complete it before it's gone:</p><p><a href=\"{{ $('Parse Cart').item.json.cartUrl }}\">Finish checkout →</a></p>", "options": {} }, "id": "n6", "name": "Reminder Email", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [180, 220] }
+  ],
+  "connections": {
+    "Checkout Abandoned Webhook": { "main": [[{ "node": "Parse Cart", "type": "main", "index": 0 }]] },
+    "Parse Cart": { "main": [[{ "node": "Wait 1h", "type": "main", "index": 0 }]] },
+    "Wait 1h": { "main": [[{ "node": "Did They Buy?", "type": "main", "index": 0 }]] },
+    "Did They Buy?": { "main": [[{ "node": "Still Abandoned?", "type": "main", "index": 0 }]] },
+    "Still Abandoned?": { "main": [[{ "node": "Reminder Email", "type": "main", "index": 0 }], []] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "shared-01-cart-recovery" }
+}

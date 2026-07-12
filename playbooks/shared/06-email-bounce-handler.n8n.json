@@ -1,0 +1,17 @@
+{
+  "name": "Shared — Email Bounce & Deliverability Handler",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "email-event", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "ESP Event Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "email-event" },
+    { "parameters": { "rules": { "values": [ { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.body.type }}", "rightValue": "hard_bounce", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "outputKey": "hard_bounce" }, { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.body.type }}", "rightValue": "spam_complaint", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "outputKey": "complaint" } ] }, "options": {} }, "id": "n2", "name": "Event Type", "type": "n8n-nodes-base.switch", "typeVersion": 3, "position": [-640, 300] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Contacts", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Email": "={{ $json.body.email }}", "Deliverable": false, "Suppressed Reason": "hard_bounce" } }, "options": { "upsert": true, "upsertColumns": ["Email"] } }, "id": "n3", "name": "Suppress Bounced", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-420, 200] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Contacts", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Email": "={{ $json.body.email }}", "Deliverable": false, "Suppressed Reason": "spam_complaint" } }, "options": { "upsert": true, "upsertColumns": ["Email"] } }, "id": "n4", "name": "Suppress Complainer", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-420, 400] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "email-health", "mode": "name" }, "text": "=:warning: Suppressed {{ $('ESP Event Webhook').item.json.body.email }} — {{ $('ESP Event Webhook').item.json.body.type }}. Check list hygiene if this spikes.", "otherOptions": {} }, "id": "n5", "name": "Log To #email-health", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [-200, 300] }
+  ],
+  "connections": {
+    "ESP Event Webhook": { "main": [[{ "node": "Event Type", "type": "main", "index": 0 }]] },
+    "Event Type": { "main": [[{ "node": "Suppress Bounced", "type": "main", "index": 0 }], [{ "node": "Suppress Complainer", "type": "main", "index": 0 }]] },
+    "Suppress Bounced": { "main": [[{ "node": "Log To #email-health", "type": "main", "index": 0 }]] },
+    "Suppress Complainer": { "main": [[{ "node": "Log To #email-health", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "shared-06-bounce-handler" }
+}

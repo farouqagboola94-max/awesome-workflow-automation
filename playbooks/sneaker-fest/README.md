@@ -12,6 +12,9 @@ Six **n8n** workflows for a sneaker convention / vendor marketplace — covering
 | 4 | UGC Aggregation & Hype Rewards | Schedule (30 min) | OpenAI + Airtable + X + DM | [`04-ugc-social-aggregation.n8n.json`](./04-ugc-social-aggregation.n8n.json) |
 | 5 | Post-Event Nurture & Resale Loop | Schedule (day after) | Airtable + Email + MailerLite + HubSpot | [`05-post-event-nurture.n8n.json`](./05-post-event-nurture.n8n.json) |
 | 6 | Door Check-In & Live Capacity | QR scan webhook | Airtable | [`06-door-checkin.n8n.json`](./06-door-checkin.n8n.json) |
+| 7 | Vendor Deposit Reminder | Schedule (daily) | Airtable + Email + Slack | [`07-vendor-deposit-reminder.n8n.json`](./07-vendor-deposit-reminder.n8n.json) |
+| 8 | Waitlist Restock Matcher (by size) | Restock webhook | Airtable + Email | [`08-waitlist-restock-matcher.n8n.json`](./08-waitlist-restock-matcher.n8n.json) |
+| 9 | Event-Day Support & Lost-and-Found | Help-request webhook | OpenAI + Airtable + Slack | [`09-event-day-support-router.n8n.json`](./09-event-day-support-router.n8n.json) |
 
 ---
 
@@ -92,6 +95,24 @@ Six **n8n** workflows for a sneaker convention / vendor marketplace — covering
 - Duplicate detection prevents one ticket walking in twice — a real problem when passes are screenshotted.
 - The response payload drives the scanner UI (green welcome vs red reject) and surfaces VIP perks at the door.
 - A sticky note shows how to wire a live capacity rollup for fire-safety headcount.
+
+## 7. Vendor Deposit Reminder
+
+**Goal:** chase unpaid booth deposits automatically and escalate the stragglers.
+
+**Flow:** `Daily → find vendors with "Contract Sent" + unpaid deposit older than 3 days → if already reminded 3×, escalate to #vendors (consider releasing the booth); else send a payment reminder and increment the counter`. Turns deposit-chasing from a manual spreadsheet into a self-running dunning loop.
+
+## 8. Waitlist Restock Matcher (by size)
+
+**Goal:** the deeper cousin of #3 — notify a waitlisted buyer only when **their specific size** restocks.
+
+**Flow:** `Restock webhook (with available sizes) → get un-notified waiters for that product → if the waiter's size is in the restock set → email them + mark notified`. No more "back in stock!" emails for a size the customer can't wear.
+
+## 9. Event-Day Support & Lost-and-Found
+
+**Goal:** a single on-site help channel that AI-triages and routes — medical/security escalate instantly.
+
+**Flow:** `Help-request webhook → AI triage (type + urgency + reassuring reply) → if urgent, alarm #event-ops-urgent → always log to the Help Log → return the reply to the attendee`. Medical and security are always flagged urgent regardless of wording.
 
 ---
 

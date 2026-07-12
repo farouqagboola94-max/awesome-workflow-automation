@@ -1,0 +1,17 @@
+{
+  "name": "Shared — AI Support Ticket Router",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "support-inbound", "responseMode": "responseNode", "options": {} }, "id": "n1", "name": "Inbound Support Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "support-inbound" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Route a support message. Return strict JSON: {\"queue\":\"billing|tech|vendor|general\",\"urgency\":\"low|med|high\",\"summary\":\"one line\",\"autoReply\":\"a helpful first response\"}. urgency=high for payment failures, event-day access problems, or angry tone.", "role": "system" }, { "content": "={{ $json.body.subject }} — {{ $json.body.message }}" } ] }, "jsonOutput": true, "options": { "temperature": 0 } }, "id": "n2", "name": "AI Classify Ticket", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-640, 300] },
+    { "parameters": { "operation": "create", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Tickets", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "From": "={{ $('Inbound Support Webhook').item.json.body.email }}", "Subject": "={{ $('Inbound Support Webhook').item.json.body.subject }}", "Queue": "={{ $json.message.content.queue }}", "Urgency": "={{ $json.message.content.urgency }}", "Summary": "={{ $json.message.content.summary }}", "Status": "Open" } }, "options": {} }, "id": "n3", "name": "Create Ticket", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-420, 300] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "=support-{{ $('AI Classify Ticket').item.json.message.content.queue }}", "mode": "name" }, "text": "={{ ($('AI Classify Ticket').item.json.message.content.urgency === 'high' ? ':rotating_light: ' : '') }}New *{{ $('AI Classify Ticket').item.json.message.content.urgency }}* ticket: {{ $('AI Classify Ticket').item.json.message.content.summary }} — from {{ $('Inbound Support Webhook').item.json.body.email }}", "otherOptions": {} }, "id": "n4", "name": "Route To Queue Channel", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [-200, 300] },
+    { "parameters": { "respondWith": "json", "responseBody": "={{ { \"reply\": $('AI Classify Ticket').item.json.message.content.autoReply, \"ticketQueue\": $('AI Classify Ticket').item.json.message.content.queue } }}", "options": {} }, "id": "n5", "name": "Auto-Reply", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [20, 300] }
+  ],
+  "connections": {
+    "Inbound Support Webhook": { "main": [[{ "node": "AI Classify Ticket", "type": "main", "index": 0 }]] },
+    "AI Classify Ticket": { "main": [[{ "node": "Create Ticket", "type": "main", "index": 0 }]] },
+    "Create Ticket": { "main": [[{ "node": "Route To Queue Channel", "type": "main", "index": 0 }]] },
+    "Route To Queue Channel": { "main": [[{ "node": "Auto-Reply", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "shared-02-support-router" }
+}

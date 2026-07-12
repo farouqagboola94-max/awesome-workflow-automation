@@ -8,10 +8,12 @@ These are working blueprints, not just diagrams: webhook triggers, branching log
 
 | Playbook | Workflows | What it covers |
 |----------|-----------|----------------|
-| [⚡ Catalyst: The Awakening](./catalyst-the-awakening/) | 7 | Waitlist funnel, community moderation, content publishing, incident response, feedback→roadmap loop, creator-key distribution, daily KPI digest |
-| [👟 Sneaker Fest](./sneaker-fest/) | 6 | Ticket onboarding, AI vendor/booth intake, drop/restock alerts, UGC aggregation, post-event nurture, door check-in |
+| [⚡ Catalyst: The Awakening](./catalyst-the-awakening/) | 10 | Waitlist funnel, community moderation, content publishing, incident response, feedback→roadmap loop, creator-key distribution, daily KPI digest, playtest scheduler, bug→Discord threads, churn win-back |
+| [👟 Sneaker Fest](./sneaker-fest/) | 9 | Ticket onboarding, AI vendor/booth intake, drop/restock alerts, UGC aggregation, post-event nurture, door check-in, deposit reminders, restock matching, event-day support |
+| [🛠️ Dev-Ops](./dev-ops/) | 8 | Issue triage, CI-failure alerts, release notes, stale sweeper, dead-link checker, format lint, contributor welcome, council convention validator |
+| [🔁 Shared](./shared/) | 6 | Cart recovery, support routing, sponsor intake, press outreach, social scheduler, email bounce handling |
 
-**13 workflows total** spanning webhooks, schedules, AI classification/triage/vetting, dedupe, multi-channel fan-out, and closed-loop reporting.
+**33 workflows total** spanning webhooks, schedules, AI classification/triage/vetting, dedupe, multi-channel fan-out, and closed-loop reporting. Full index: **[AUTOMATIONS.md](./AUTOMATIONS.md)**.
 
 ## How to use
 
