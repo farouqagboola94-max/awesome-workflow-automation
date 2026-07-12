@@ -390,9 +390,9 @@ Key stats:
 
 > Ready-to-import, end-to-end workflows for real events — built on n8n, mappable 1:1 to Make or Zapier. Not just diagrams: webhook triggers, branching logic, AI classification/triage, dedupe, and multi-channel fan-out are all implemented. See **[playbooks/](./playbooks/)**.
 
-- **[⚡ Catalyst: The Awakening](./playbooks/catalyst-the-awakening/)** — 5 workflows for a game / immersive-experience launch: viral waitlist funnel, AI community moderation, one-to-many devlog publishing, launch-day incident response, and a feedback→roadmap loop.
+- **[⚡ Catalyst: The Awakening](./playbooks/catalyst-the-awakening/)** — 7 workflows for a game / immersive-experience launch: viral waitlist funnel, AI community moderation, one-to-many devlog publishing, launch-day incident response, feedback→roadmap loop, creator-key distribution, and a daily KPI digest.
 
-- **[👟 Sneaker Fest](./playbooks/sneaker-fest/)** — 2 revenue workflows for a sneaker convention: ticket-purchase onboarding (QR pass + CRM + segmented email) and AI-screened vendor/booth intake (contract + deposit + floor plan).
+- **[👟 Sneaker Fest](./playbooks/sneaker-fest/)** — 6 workflows for a sneaker convention: ticket-purchase onboarding, AI-screened vendor/booth intake, drop/restock alerts, UGC aggregation with hype rewards, post-event nurture, and door check-in with live capacity.
 
 ---
 

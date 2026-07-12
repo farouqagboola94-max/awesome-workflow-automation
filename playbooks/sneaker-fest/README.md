@@ -1,6 +1,6 @@
 # 👟 Sneaker Fest — Automation Playbook
 
-Two revenue-driving **n8n** workflows for a sneaker convention / vendor marketplace: automate attendee onboarding at the door and vendor booth intake behind the scenes.
+Six **n8n** workflows for a sneaker convention / vendor marketplace — covering the full event lifecycle: sell tickets, screen vendors, drive hype, work the door, and run the post-event resale loop.
 
 > Importable n8n JSON (`*.n8n.json`), shipped **inactive** with placeholder credentials and `$env` variables. Wire up your own before enabling. See [Setup](#setup).
 
@@ -8,6 +8,10 @@ Two revenue-driving **n8n** workflows for a sneaker convention / vendor marketpl
 |---|----------|---------|-----------|------|
 | 1 | Ticket Purchase Onboarding | Order webhook (Shopify / Eventbrite) | Airtable + Email + Slack | [`01-ticket-purchase-onboarding.n8n.json`](./01-ticket-purchase-onboarding.n8n.json) |
 | 2 | Vendor / Booth Application Intake | Application webhook | OpenAI + Airtable + e-sign + QuickBooks | [`02-vendor-booth-intake.n8n.json`](./02-vendor-booth-intake.n8n.json) |
+| 3 | Drop & Restock Alerts | Shopify inventory webhook | Bitly + X + Discord + Airtable + Email | [`03-drop-restock-alerts.n8n.json`](./03-drop-restock-alerts.n8n.json) |
+| 4 | UGC Aggregation & Hype Rewards | Schedule (30 min) | OpenAI + Airtable + X + DM | [`04-ugc-social-aggregation.n8n.json`](./04-ugc-social-aggregation.n8n.json) |
+| 5 | Post-Event Nurture & Resale Loop | Schedule (day after) | Airtable + Email + MailerLite + HubSpot | [`05-post-event-nurture.n8n.json`](./05-post-event-nurture.n8n.json) |
+| 6 | Door Check-In & Live Capacity | QR scan webhook | Airtable | [`06-door-checkin.n8n.json`](./06-door-checkin.n8n.json) |
 
 ---
 
@@ -40,17 +44,72 @@ Two revenue-driving **n8n** workflows for a sneaker convention / vendor marketpl
 
 **Airtable — `Vendors` table:** `Brand`, `Contact Email`, `Social`, `Products`, `Fit Score`, `Recommendation`, `Booth Size`, `Red Flags`, `Status` (Applied → Contract Sent → …), `Floor Plan`.
 
+## 3. Drop & Restock Alerts
+
+**Goal:** the second a limited pair goes live or restocks, blast every channel and the product waitlist — with trackable links.
+
+**Flow:** `Shopify inventory webhook → detect DROP (0→N) or RESTOCK (N→more) and whether it's limited → mint a Bitly UTM link → compose hype copy → fan out to X + Discord (@everyone) + email the per-product waitlist`.
+
+- The *Detect* node returns nothing for irrelevant inventory changes (e.g. a sale decrementing stock), so the workflow only fires on genuine drops/restocks.
+- "Limited/exclusive/deadstock/collab" tags escalate the copy (🔥🔥 + "Limited pairs") to drive urgency.
+- Bitly links carry `utm_source=drop_alert` so you can attribute conversions per channel afterward.
+
+**Airtable — `Waitlist Notify` table:** `Email`, `Product Handle` (customers opt into a specific pair's restock).
+
+## 4. UGC Aggregation & Hype Rewards
+
+**Goal:** continuously harvest `#SneakerFest` posts, auto-repost the best safe ones, and reward fans — no manual social scrolling.
+
+**Flow:** `Every 30 min → fetch recent #SneakerFest mentions → split → skip already-captured → AI curate (score + safety) → store in Airtable → if score ≥ 75 and safe, repost + DM a discount code`.
+
+- The AI curator gates on **safety** (no profanity/hate/competitor/scam) before anything is reposted to your brand account — critical for auto-reposting.
+- Dedup by `Post ID` means the 30-min poll never double-processes or double-rewards.
+- Swap the generic mention-provider HTTP nodes for your actual social-listening API (e.g. a provider from the [social / listening tools](../../readme.md) in the main list).
+
+**Airtable — `UGC` table:** `Post ID`, `Author`, `Text`, `URL`, `Score`, `Safe`, `Captured At`.
+
+## 5. Post-Event Nurture & Resale Loop
+
+**Goal:** the day after the event, segment everyone by whether they actually showed, then run the right follow-up automatically.
+
+**Flow:** `Scheduled (Mon 10:00 after event) → load attendees → segment on Checked In`:
+- **Attended** → thank-you + survey → sync to loyalty segment → if VIP/Reseller, create a next-season lead in HubSpot.
+- **No-show** → win-back email with a comeback discount.
+
+- Uses the `Checked In` flag written by workflow #6, so attendance segmentation is real, not assumed.
+- High-value buyers (VIP/Reseller) become tracked CRM leads for next season's pre-sale.
+- Adjust the cron (`0 10 * * 1`) to the first business day after your event date.
+
+## 6. Door Check-In & Live Capacity
+
+**Goal:** scan a QR at the door, validate instantly, block duplicates, and keep a live headcount — the mirror of the token minted in workflow #1.
+
+**Flow:** `QR scan webhook → decode token (base64url of orderId:email) → look up ticket in Airtable → switch`:
+- **not found** → `404 invalid` (send to box office).
+- **already checked in** → `409 duplicate` (possible screenshot/re-entry).
+- **valid** → mark checked in + gate/time → `200` welcome with tier perks.
+
+- Duplicate detection prevents one ticket walking in twice — a real problem when passes are screenshotted.
+- The response payload drives the scanner UI (green welcome vs red reject) and surfaces VIP perks at the door.
+- A sticky note shows how to wire a live capacity rollup for fire-safety headcount.
+
 ---
 
 ## Setup
 
 1. **Import** — n8n *Workflows → Import from File* → pick a `*.n8n.json`.
-2. **Credentials** — attach: Airtable PAT, SMTP/email (or the Resend node), Slack OAuth2, OpenAI, MailerLite (or your ESP), QuickBooks OAuth2, and generic HTTP Header Auth for the e-sign provider ([DocuSeal](https://www.docuseal.com/) used here; swap for DocuSign/PandaDoc).
-3. **Environment variables:** `SNEAKERFEST_BOOTH_CONTRACT_TEMPLATE` (e-sign template ID).
-4. **Base IDs** — replace the placeholder Airtable base (`appSneakerFest`) with your own; create the `Attendees` and `Vendors` tables above.
-5. **Point your storefront/form at the webhooks:**
+2. **Credentials** — attach: Airtable PAT, SMTP/email (or the Resend node), Slack OAuth2, OpenAI, MailerLite (or your ESP), QuickBooks OAuth2, HubSpot, Bitly, X/Twitter OAuth2, and generic HTTP Header Auth for the e-sign provider ([DocuSeal](https://www.docuseal.com/) used here; swap for DocuSign/PandaDoc) and your social-listening API.
+3. **Environment variables:**
+   - `SNEAKERFEST_BOOTH_CONTRACT_TEMPLATE` (e-sign template ID)
+   - `SNEAKERFEST_DISCORD_DROPS_WEBHOOK` (Discord webhook URL for #drops)
+4. **Base IDs** — replace the placeholder Airtable base (`appSneakerFest`) with your own; create the `Attendees`, `Vendors`, `Waitlist Notify`, and `UGC` tables described above.
+5. **Point your storefront/form/scanner at the webhooks:**
    - Shopify/Eventbrite → `.../webhook/sneakerfest-ticket-purchase` (order-created event).
    - Vendor application form (Typeform, Tally, Airtable form) → `.../webhook/sneakerfest-vendor-apply`.
+   - Shopify inventory level update → `.../webhook/sneakerfest-inventory-event`.
+   - Door scanner app → `.../webhook/sneakerfest-checkin` (POST `{ "token": "<qr>" }`).
 6. **Test** in n8n *Test* mode with the sample payloads in the root [playbooks README](../README.md#testing-webhooks), then toggle **Active**.
+
+> **Lifecycle order:** #1 mints QR passes → #6 scans them at the door and sets `Checked In` → #5 reads that flag the next day to segment follow-up. #3 and #4 run continuously through the hype cycle.
 
 > These map cleanly onto **Make** or **Zapier** too. n8n is used for the native AI node (vendor screening) and self-hosting.

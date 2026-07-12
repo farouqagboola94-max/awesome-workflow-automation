@@ -1,0 +1,199 @@
+{
+  "name": "Sneaker Fest — UGC Aggregation & Hype Rewards",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 30 }] }
+      },
+      "id": "node-cron",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-860, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.mention-provider.example/v1/mentions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "hashtag", "value": "SneakerFest" },
+            { "name": "since", "value": "={{ $now.minus({ minutes: 35 }).toISO() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-fetch-mentions",
+      "name": "Fetch #SneakerFest Mentions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-640, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "posts",
+        "options": {}
+      },
+      "id": "node-split",
+      "name": "Split Into Posts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [-440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "UGC", "mode": "list" },
+        "filterByFormula": "={{ \"{Post ID} = '\" + $json.id + \"'\" }}",
+        "options": {}
+      },
+      "id": "node-seen",
+      "name": "Already Captured?",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "empty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-new",
+      "name": "Is New?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-40, 300]
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            {
+              "content": "You curate user-generated posts for a sneaker event. Rate a post for repost-worthiness. Return strict JSON: {\"score\":0-100,\"safe\":true|false,\"reason\":\"one line\"}. safe=false if it contains profanity, hate, competitor promotion, or resale scam language. Reward genuine fan enthusiasm, good photos of kicks, and positive event mentions.",
+              "role": "system"
+            },
+            {
+              "content": "={{ $('Split Into Posts').item.json.text }} | author_followers: {{ $('Split Into Posts').item.json.author_followers }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": { "temperature": 0 }
+      },
+      "id": "node-ai-curate",
+      "name": "AI Curate Post",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "UGC", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Post ID": "={{ $('Split Into Posts').item.json.id }}",
+            "Author": "={{ $('Split Into Posts').item.json.author_handle }}",
+            "Text": "={{ $('Split Into Posts').item.json.text }}",
+            "URL": "={{ $('Split Into Posts').item.json.url }}",
+            "Score": "={{ $json.message.content.score }}",
+            "Safe": "={{ $json.message.content.safe }}",
+            "Captured At": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-store",
+      "name": "Store UGC",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $('AI Curate Post').item.json.message.content.safe }}",
+              "rightValue": "true",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            },
+            {
+              "leftValue": "={{ $('AI Curate Post').item.json.message.content.score }}",
+              "rightValue": 75,
+              "operator": { "type": "number", "operation": "gte" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-top",
+      "name": "Top + Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "retweet",
+        "tweetId": "={{ $('Split Into Posts').item.json.id }}"
+      },
+      "id": "node-repost",
+      "name": "Repost Top UGC",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [840, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mention-provider.example/v1/dm",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"to\": $('Split Into Posts').item.json.author_handle, \"message\": \"🙌 Love this! We featured your post. Here's 15% off Sneaker Fest merch as a thank-you: HYPE15 — see you there!\" } }}",
+        "options": {}
+      },
+      "id": "node-dm",
+      "name": "DM Discount To Fan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 380]
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes": { "main": [[{ "node": "Fetch #SneakerFest Mentions", "type": "main", "index": 0 }]] },
+    "Fetch #SneakerFest Mentions": { "main": [[{ "node": "Split Into Posts", "type": "main", "index": 0 }]] },
+    "Split Into Posts": { "main": [[{ "node": "Already Captured?", "type": "main", "index": 0 }]] },
+    "Already Captured?": { "main": [[{ "node": "Is New?", "type": "main", "index": 0 }]] },
+    "Is New?": { "main": [[{ "node": "AI Curate Post", "type": "main", "index": 0 }], []] },
+    "AI Curate Post": { "main": [[{ "node": "Store UGC", "type": "main", "index": 0 }]] },
+    "Store UGC": { "main": [[{ "node": "Top + Safe?", "type": "main", "index": 0 }]] },
+    "Top + Safe?": { "main": [[{ "node": "Repost Top UGC", "type": "main", "index": 0 }, { "node": "DM Discount To Fan", "type": "main", "index": 0 }], []] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "sneakerfest-04-ugc" }
+}

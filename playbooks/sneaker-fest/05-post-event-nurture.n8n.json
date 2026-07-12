@@ -1,0 +1,149 @@
+{
+  "name": "Sneaker Fest — Post-Event Nurture & Resale Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 10 * * 1" }] }
+      },
+      "id": "node-cron",
+      "name": "Day After Event (10:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-880, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Attendees", "mode": "list" },
+        "options": {}
+      },
+      "id": "node-get-attendees",
+      "name": "Load All Attendees",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-660, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.fields['Checked In'] }}",
+                    "rightValue": "true",
+                    "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "attended"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "node-segment",
+      "name": "Segment: Attended vs No-Show",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-440, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@sneakerfest.com",
+        "toEmail": "={{ $json.fields.Email }}",
+        "subject": "Thanks for coming to Sneaker Fest 🙏 (2-min survey inside)",
+        "html": "=<h1>You made it what it was, {{ $json.fields.Name }}.</h1><p>Hope you copped something heat. Two quick things:</p><ol><li><a href=\"https://sneakerfest.com/survey?id={{ $json.fields['Order ID'] }}\">Tell us how we did (2 min)</a> — we read every response.</li><li>Early access to next season's drops opens first for attendees. You're on the list.</li></ol><p>Until next time — keep it laced. 👟</p>",
+        "options": {}
+      },
+      "id": "node-thankyou",
+      "name": "Thank-You + Survey",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [-200, 180]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "create",
+        "email": "={{ $json.fields.Email }}",
+        "additionalFields": {
+          "fields": {
+            "field": [
+              { "fieldName": "segment", "fieldValue": "attended-2026" },
+              { "fieldName": "ticket_tier", "fieldValue": "={{ $json.fields['Ticket Tier'] }}" }
+            ]
+          }
+        }
+      },
+      "id": "node-loyalty",
+      "name": "Sync To Loyalty Segment",
+      "type": "n8n-nodes-base.mailerLite",
+      "typeVersion": 2,
+      "position": [40, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fields['Ticket Tier'] }}",
+              "rightValue": "VIP,Reseller",
+              "operator": { "type": "string", "operation": "regex" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-highvalue",
+      "name": "High-Value Buyer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [280, 180]
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "create",
+        "additionalFields": {}
+      },
+      "id": "node-crm-deal",
+      "name": "Create Next-Season Lead",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [520, 100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello@sneakerfest.com",
+        "toEmail": "={{ $json.fields.Email }}",
+        "subject": "We missed you at Sneaker Fest — here's what you missed 👀",
+        "html": "=<p>Sorry we didn't catch you, {{ $json.fields.Name }}. Here's the highlight reel and a comeback code for next season: <strong>WELCOMEBACK</strong> — 20% off your next ticket.</p><p><a href=\"https://sneakerfest.com/recap\">Watch the recap →</a></p>",
+        "options": {}
+      },
+      "id": "node-noshow",
+      "name": "No-Show Win-Back",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [-200, 460]
+    }
+  ],
+  "connections": {
+    "Day After Event (10:00)": { "main": [[{ "node": "Load All Attendees", "type": "main", "index": 0 }]] },
+    "Load All Attendees": { "main": [[{ "node": "Segment: Attended vs No-Show", "type": "main", "index": 0 }]] },
+    "Segment: Attended vs No-Show": { "main": [[{ "node": "Thank-You + Survey", "type": "main", "index": 0 }], [{ "node": "No-Show Win-Back", "type": "main", "index": 0 }]] },
+    "Thank-You + Survey": { "main": [[{ "node": "Sync To Loyalty Segment", "type": "main", "index": 0 }]] },
+    "Sync To Loyalty Segment": { "main": [[{ "node": "High-Value Buyer?", "type": "main", "index": 0 }]] },
+    "High-Value Buyer?": { "main": [[{ "node": "Create Next-Season Lead", "type": "main", "index": 0 }], []] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "sneakerfest-05-nurture" }
+}

@@ -1,6 +1,6 @@
 # ⚡ Catalyst: The Awakening — Automation Playbook
 
-Five production-shaped **n8n** workflows covering the full lifecycle of a game / immersive-experience launch: build the audience, run the community, ship content, survive launch day, and close the feedback loop.
+Seven production-shaped **n8n** workflows covering the full lifecycle of a game / immersive-experience launch: build the audience, run the community, ship content, arm creators, survive launch day, close the feedback loop, and report on it daily.
 
 > All workflows are importable n8n JSON (`*.n8n.json`). They ship **inactive** with placeholder credentials, base IDs, and `$env` variables — wire up your own before enabling. See [Setup](#setup) below.
 
@@ -11,6 +11,8 @@ Five production-shaped **n8n** workflows covering the full lifecycle of a game /
 | 3 | Devlog & Content Publishing | Notion status change | Notion + X + Discord + Email | [`03-content-devlog-publishing.n8n.json`](./03-content-devlog-publishing.n8n.json) |
 | 4 | Launch-Day Incident Monitoring | Sentry webhook | Sentry + Slack + Jira + PagerDuty | [`04-launch-incident-monitoring.n8n.json`](./04-launch-incident-monitoring.n8n.json) |
 | 5 | Feedback → Roadmap Loop | Feedback webhook | OpenAI + Airtable + Slack | [`05-feedback-roadmap-loop.n8n.json`](./05-feedback-roadmap-loop.n8n.json) |
+| 6 | Creator / Streamer Key Distribution | Creator application webhook | OpenAI + Airtable + Email + Slack | [`06-creator-key-distribution.n8n.json`](./06-creator-key-distribution.n8n.json) |
+| 7 | Daily Community & KPI Digest | Schedule (daily 08:00) | Airtable + Sentry + Slack + Email | [`07-daily-kpi-digest.n8n.json`](./07-daily-kpi-digest.n8n.json) |
 
 ---
 
@@ -70,6 +72,28 @@ Five production-shaped **n8n** workflows covering the full lifecycle of a game /
 
 **Airtable — `Backlog` table:** `Summary`, `Category`, `Sentiment`, `Severity`, `Tags`, `Raw Feedback`, `Reporter`, `Vote Count`, `Status`.
 
+## 6. Creator / Streamer Key Distribution
+
+**Goal:** vet creators, hand out early keys from a finite pool, and enforce embargo terms — without a human triaging every DM.
+
+**Flow:** `Creator application webhook → normalize channel stats → AI vet (tier A/B/C/reject + risk flags) → if approved, reserve an available key from the Airtable pool → if a key is free, mark it assigned + email the key with embargo terms; if the pool is empty, alert #creators to top up → rejected applicants get a polite decline`.
+
+- Keys are reserved atomically from a `Key Pool` table (oldest `Available` first), so two applicants can't be handed the same key.
+- The AI vetter flags mismatched follower/view ratios — the classic bought-audience tell.
+- Empty-pool detection turns "we ran out of keys" from a silent failure into a Slack ping.
+
+**Airtable — `Key Pool` table:** `Key`, `Status` (Available / Assigned), `Assigned To`, `Creator Tier`, `Assigned At`, `Created`.
+
+## 7. Daily Community & KPI Digest
+
+**Goal:** every morning, one digest that tells the team how the launch is actually going — pulled from the other workflows' data.
+
+**Flow:** `Daily 08:00 → in parallel pull new signups (24h), new feedback (24h), and Sentry error volume → aggregate into KPIs (signups, referral %, feedback count, bug count, sentiment split, error total) → format with a health traffic-light → post to #standup and email leadership`.
+
+- It reads the same Airtable bases the waitlist (#1) and feedback (#5) workflows write to, so the digest is a free byproduct of the pipeline you already run.
+- Error volume drives a 🟢/🟡/🔴 health signal (thresholds tunable in *Format Digest*).
+- Referral % surfaces whether your viral loop (#1) is actually compounding day over day.
+
 ---
 
 ## Setup
@@ -79,6 +103,7 @@ Five production-shaped **n8n** workflows covering the full lifecycle of a game /
 3. **Environment variables** — set the `$env` references used across workflows:
    - `CATALYST_ROLE_UNVERIFIED`, `CATALYST_MODLOG_CHANNEL`, `CATALYST_DISCORD_WEBHOOK_URL`, `CATALYST_NEWSLETTER_LIST`
    - `STATUSPAGE_PAGE_ID`, `PAGERDUTY_ROUTING_KEY`
+   - `CATALYST_LEADERSHIP_EMAILS` (comma-separated recipients for the daily digest)
 4. **Base/table IDs** — replace the placeholder Airtable base IDs (`appCatalyst…`) and Notion database IDs with your own.
 5. **Test** — each webhook workflow has a copy-paste `curl` sample in the root [playbooks README](../README.md#testing-webhooks). Run in n8n *Test* mode first, then toggle **Active**.
 

@@ -8,8 +8,10 @@ These are working blueprints, not just diagrams: webhook triggers, branching log
 
 | Playbook | Workflows | What it covers |
 |----------|-----------|----------------|
-| [⚡ Catalyst: The Awakening](./catalyst-the-awakening/) | 5 | Waitlist funnel, community moderation, content publishing, launch-day incident response, feedback→roadmap loop |
-| [👟 Sneaker Fest](./sneaker-fest/) | 2 | Ticket-purchase onboarding, AI vendor/booth intake |
+| [⚡ Catalyst: The Awakening](./catalyst-the-awakening/) | 7 | Waitlist funnel, community moderation, content publishing, incident response, feedback→roadmap loop, creator-key distribution, daily KPI digest |
+| [👟 Sneaker Fest](./sneaker-fest/) | 6 | Ticket onboarding, AI vendor/booth intake, drop/restock alerts, UGC aggregation, post-event nurture, door check-in |
+
+**13 workflows total** spanning webhooks, schedules, AI classification/triage/vetting, dedupe, multi-channel fan-out, and closed-loop reporting.
 
 ## How to use
 
@@ -64,6 +66,27 @@ curl -X POST "$N8N_TEST_URL/sneakerfest-ticket-purchase" \
 curl -X POST "$N8N_TEST_URL/sneakerfest-vendor-apply" \
   -H 'Content-Type: application/json' \
   -d '{"brand":"HeatCheck Kicks","email":"vendor@example.com","social":"@heatcheckkicks","products":"Deadstock Jordans, custom laces","followers":48000,"booth_size":"M","notes":"Been vending 3 years"}'
+```
+
+**Sneaker Fest — inventory drop**
+```bash
+curl -X POST "$N8N_TEST_URL/sneakerfest-inventory-event" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Air Jordan 1 x Fest Collab","handle":"aj1-fest","tags":"limited,collab","old_available":0,"available":40,"price":"220.00"}'
+```
+
+**Sneaker Fest — door check-in** *(token is base64url of `orderId:email`)*
+```bash
+curl -X POST "$N8N_TEST_URL/sneakerfest-checkin" \
+  -H 'Content-Type: application/json' \
+  -d "{\"token\":\"$(printf 'SF-1001:buyer@example.com' | basenc --base64url | tr -d '=')\",\"gate\":\"main\"}"
+```
+
+**Catalyst — creator application**
+```bash
+curl -X POST "$N8N_TEST_URL/catalyst-creator-apply" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"streamer@example.com","handle":"@playscatalyst","platform":"twitch","followers":52000,"avg_views":1800,"channel_url":"https://twitch.tv/playscatalyst","region":"EU"}'
 ```
 
 ## Disclaimer
