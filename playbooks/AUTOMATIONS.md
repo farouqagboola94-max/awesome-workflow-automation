@@ -10,7 +10,7 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 
 | Platform | Status | Note |
 |----------|--------|------|
-| n8n (definitions) | ✅ Saved | All 33 committed to `playbooks/`, JSON-validated |
+| n8n (definitions) | ✅ Saved | All 53 committed to `playbooks/`, JSON-validated |
 | Make | 🟡 Live (capped) | Account authenticated (Farouq Agboola). **Free plan caps at 2 scenarios / 1000 ops-mo / 1 data store / no app connections.** 1 live scenario provisioned as proof (below). |
 | Zapier | 🟡 Live (on-demand) | **8 apps auto-provisioned with auth bound**: Airtable, Gmail, Resend, HubSpot, GitHub, Notion, Instagram, YouTube (219 actions). MCP executes actions **on demand**; it does not create standing event-triggered Zaps. |
 
@@ -90,20 +90,32 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 
 ### Remaining automations — what each still needs
 
-These have n8n definitions saved but no Zapier skill yet, because they depend on an app **not connected in Zapier** or an Airtable table not yet created:
+37 of the 53 automations are skill-ified. The rest are blocked by an **unconnected app** or the **Zapier task quota** (which gates creating the last `appShared` tables). Current status:
 
-| Automation | Blocker |
-|-----------|---------|
-| Catalyst 02 community moderation, 09 bug→Discord | **Discord** not connected |
-| Catalyst 03 devlog publishing | **X/Discord** not connected (Notion + email parts are runnable) |
+| Automation(s) | Blocker |
+|---------------|---------|
+| Catalyst 02 community moderation, 09 bug→Discord, 03 devlog publishing | **Discord / X** not connected |
 | Catalyst 04 incident monitoring | **Sentry / Jira / PagerDuty / Slack** not connected |
-| Catalyst 06 creator keys, 08 playtest, 10 churn | need Airtable tables `Key Pool` / `Slots` / `Players` (say the word and I'll create them like the 3 above) |
-| Sneaker Fest 02 vendor intake | e-sign + QuickBooks not connected (Airtable + email parts runnable) |
-| Sneaker Fest 03 drop alerts, 04 UGC, 08 restock | **X / social listening** not connected; need `Waitlist Notify` / `UGC` tables |
-| Sneaker Fest 07 deposit reminder, 09 event support | need `Vendors` extension / `Help Log` table |
-| Shared 01 cart recovery, 02 support router, 04 outreach, 05 scheduler, 06 bounce | need `appShared` tables (`Orders`, `Tickets`, `Outreach`, `Content Calendar`, `Contacts`) |
+| Sneaker Fest 02 vendor intake | **e-sign + QuickBooks** not connected (Airtable/email parts runnable) |
+| Sneaker Fest 03 drop alerts, 04 UGC | **X / social listening** not connected |
+| Sneaker Fest 07 deposit reminder | uses the existing `Vendors` table — skill can be added on request |
+| Shared 01 cart recovery, 02 support router, 04 outreach, 05 scheduler, 06 bounce; Ops/Growth items marked † | need `appShared` tables — **blocked by Zapier task quota** |
 
-**To finish these:** either connect the missing apps in Zapier (Discord, Slack, X, Sentry) or ask me to create the remaining Airtable tables — then I'll add a skill for each.
+**Note:** Catalyst 06/08/10 and Sneaker Fest 08/09 are now skill-ified (their tables were created this session). Sneaker Fest 08 & 09 need the 7 remaining fields (see above) to run cleanly.
+
+### Connecting more apps (to unlock the last automations)
+
+Connect any of these in **Zapier** (Zapier → My Apps → Add connection), then ask me to skill-ify — no code needed on your side:
+
+| App | Unlocks |
+|-----|---------|
+| **Slack** | Ops 07 KPI alert; all Slack alert steps (incident, sales pings, ops reminders) |
+| **QuickBooks** | Ops 01 auto-invoicing; Sneaker Fest 02 vendor deposit invoicing |
+| **Google Sheets** | Ops 06 Airtable→Sheets backup |
+| **Discord** | Catalyst 02 moderation, 09 bug threads; Sneaker Fest drop announcements |
+| **X / Twitter** | Catalyst 03 devlog publishing; Sneaker Fest 03/04 drop + UGC |
+
+For **Make** (to run standing scenarios instead of on-demand skills): upgrade past the Free 2-scenario cap, then add the same app connections in Make → I port the n8n definitions to live scenarios.
 
 ### Hard limits discovered (why "all 33 auto-running" isn't possible yet)
 
