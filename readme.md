@@ -29,6 +29,7 @@ A curated, comprehensive collection of **workflow automation software**, **AI ag
 - [📊 Data Pipeline & Workflow Orchestration](#-data-pipeline--workflow-orchestration)
 - [📋 Project Management with Automation](#-project-management-with-automation)
 - [🗺️ Visual Mapping & Diagramming](#-visual-mapping--diagramming)
+- [🎪 Event Automation Playbooks](#-event-automation-playbooks)
 - [📝 Articles & Guides](#-articles--guides)
 - [📘 Books](#-books)
 - [🎥 Video Tutorials & Courses](#-video-tutorials--courses)
@@ -382,6 +383,16 @@ Key stats:
 - **[Miro](https://miro.com/)** — Collaborative online whiteboard with workflow visualization and AI features.
 
 - **[draw.io](https://www.drawio.com/)** — Free, open-source diagramming for workflows, architecture diagrams, and flowcharts.
+
+---
+
+## 🎪 Event Automation Playbooks
+
+> Ready-to-import, end-to-end workflows for real events — built on n8n, mappable 1:1 to Make or Zapier. Not just diagrams: webhook triggers, branching logic, AI classification/triage, dedupe, and multi-channel fan-out are all implemented. See **[playbooks/](./playbooks/)**.
+
+- **[⚡ Catalyst: The Awakening](./playbooks/catalyst-the-awakening/)** — 5 workflows for a game / immersive-experience launch: viral waitlist funnel, AI community moderation, one-to-many devlog publishing, launch-day incident response, and a feedback→roadmap loop.
+
+- **[👟 Sneaker Fest](./playbooks/sneaker-fest/)** — 2 revenue workflows for a sneaker convention: ticket-purchase onboarding (QR pass + CRM + segmented email) and AI-screened vendor/booth intake (contract + deposit + floor plan).
 
 ---
 

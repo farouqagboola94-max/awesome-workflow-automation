@@ -1,0 +1,150 @@
+{
+  "name": "Catalyst — Devlog & Content Publishing Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": { "item": [{ "mode": "everyMinute" }] },
+        "databaseId": { "__rl": true, "value": "catalyst-devlog-db", "mode": "id" },
+        "simple": false,
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Status|status",
+              "condition": "equals",
+              "statusValue": "Ready to Publish"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-notion-trigger",
+      "name": "Notion: New Ready Devlog",
+      "type": "n8n-nodes-base.notionTrigger",
+      "typeVersion": 1,
+      "position": [-780, 300]
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "operation": "getAll",
+        "blockId": "={{ $json.id }}",
+        "returnAll": true
+      },
+      "id": "node-get-content",
+      "name": "Get Devlog Body",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [-560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten Notion blocks into markdown + build per-channel variants\nconst blocks = $input.all();\nconst page = $('Notion: New Ready Devlog').first().json;\nconst title = (page.properties?.Name?.title?.[0]?.plain_text) || 'Catalyst Devlog';\nlet md = '';\nfor (const b of blocks) {\n  const j = b.json;\n  const t = j.type;\n  const text = (j[t]?.rich_text || []).map(r => r.plain_text).join('');\n  if (t === 'heading_1') md += `# ${text}\\n\\n`;\n  else if (t === 'heading_2') md += `## ${text}\\n\\n`;\n  else if (t === 'paragraph' && text) md += `${text}\\n\\n`;\n  else if (t === 'bulleted_list_item') md += `- ${text}\\n`;\n}\nconst plain = md.replace(/[#*_>-]/g, '').replace(/\\n{2,}/g, ' ').trim();\nconst tweet = `${title} ⚡\\n\\n${plain.slice(0, 200)}…\\n\\nFull devlog 👇 catalyst-game.com/devlog`;\nconst discord = `**${title}**\\n\\n${plain.slice(0, 500)}…\\n\\nRead the full devlog: <https://catalyst-game.com/devlog>`;\nreturn [{ json: { title, markdown: md, tweet, discord, url: 'https://catalyst-game.com/devlog', pageId: page.id } }];"
+      },
+      "id": "node-build-variants",
+      "name": "Build Channel Variants",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.catalyst-game.com/blog/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"title\": $json.title, \"body_markdown\": $json.markdown, \"status\": \"published\" } }}",
+        "options": {}
+      },
+      "id": "node-publish-blog",
+      "name": "Publish To Blog / CMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 160]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "text": "={{ $('Build Channel Variants').item.json.tweet }}",
+        "additionalFields": {}
+      },
+      "id": "node-post-x",
+      "name": "Post To X",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [-120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CATALYST_DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": $('Build Channel Variants').item.json.discord } }}",
+        "options": {}
+      },
+      "id": "node-post-discord",
+      "name": "Announce In Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 440]
+    },
+    {
+      "parameters": {
+        "fromEmail": "devlog@catalyst-game.com",
+        "toEmail": "={{ $env.CATALYST_NEWSLETTER_LIST }}",
+        "subject": "={{ $('Build Channel Variants').item.json.title }} — Catalyst Devlog",
+        "html": "={{ $('Build Channel Variants').item.json.markdown }}",
+        "options": {}
+      },
+      "id": "node-newsletter",
+      "name": "Send Newsletter Broadcast",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [-120, 580]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $('Build Channel Variants').item.json.pageId }}",
+        "propertiesUi": {
+          "propertyValues": [
+            { "key": "Status|status", "statusValue": "Published" },
+            { "key": "Published At|date", "date": "={{ $now.toISO() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-mark-published",
+      "name": "Mark Notion Published",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [140, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Fan-out publishing\nAll four channels run in parallel from **Build Channel Variants**, then converge on the Notion status update so a single devlog fires blog + X + Discord + newsletter and closes the loop.",
+        "height": 220,
+        "width": 320
+      },
+      "id": "node-note",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-360, 600]
+    }
+  ],
+  "connections": {
+    "Notion: New Ready Devlog": { "main": [[{ "node": "Get Devlog Body", "type": "main", "index": 0 }]] },
+    "Get Devlog Body": { "main": [[{ "node": "Build Channel Variants", "type": "main", "index": 0 }]] },
+    "Build Channel Variants": { "main": [[{ "node": "Publish To Blog / CMS", "type": "main", "index": 0 }, { "node": "Post To X", "type": "main", "index": 0 }, { "node": "Announce In Discord", "type": "main", "index": 0 }, { "node": "Send Newsletter Broadcast", "type": "main", "index": 0 }]] },
+    "Publish To Blog / CMS": { "main": [[{ "node": "Mark Notion Published", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "catalyst-03-content" }
+}

@@ -1,0 +1,190 @@
+{
+  "name": "Catalyst — Feedback → Roadmap Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "catalyst-feedback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-feedback-webhook",
+      "name": "Feedback Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-820, 300],
+      "webhookId": "catalyst-feedback"
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            {
+              "content": "You triage player feedback for a game. Return strict JSON only: {\"category\":\"BUG|FEATURE|PRAISE|BALANCE|OTHER\",\"sentiment\":\"positive|neutral|negative\",\"severity\":\"low|medium|high\",\"summary\":\"one line\",\"tags\":[\"..\"]}. Keep summary under 12 words.",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.body.message }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": { "temperature": 0 }
+      },
+      "id": "node-ai-triage",
+      "name": "AI Triage Feedback",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [-600, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appCatalystRoadmap", "mode": "id" },
+        "table": { "__rl": true, "value": "Backlog", "mode": "list" },
+        "filterByFormula": "={{ \"FIND(LOWER('\" + $json.message.content.summary.replace(/'/g, '') + \"'), LOWER({Summary}))\" }}",
+        "options": {}
+      },
+      "id": "node-dedupe",
+      "name": "Search For Duplicate",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-380, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-dupe",
+      "name": "Duplicate Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-160, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appCatalystRoadmap", "mode": "id" },
+        "table": { "__rl": true, "value": "Backlog", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Vote Count": "={{ ($json.fields['Vote Count'] || 1) + 1 }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-upvote",
+      "name": "Increment Vote On Existing",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [80, 180]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": { "__rl": true, "value": "appCatalystRoadmap", "mode": "id" },
+        "table": { "__rl": true, "value": "Backlog", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $('AI Triage Feedback').item.json.message.content.summary }}",
+            "Category": "={{ $('AI Triage Feedback').item.json.message.content.category }}",
+            "Sentiment": "={{ $('AI Triage Feedback').item.json.message.content.sentiment }}",
+            "Severity": "={{ $('AI Triage Feedback').item.json.message.content.severity }}",
+            "Tags": "={{ ($('AI Triage Feedback').item.json.message.content.tags || []).join(', ') }}",
+            "Raw Feedback": "={{ $('Feedback Intake Webhook').item.json.body.message }}",
+            "Reporter": "={{ $('Feedback Intake Webhook').item.json.body.email || 'anonymous' }}",
+            "Vote Count": 1,
+            "Status": "Triage"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-create-backlog",
+      "name": "Create Backlog Item",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [80, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $('AI Triage Feedback').item.json.message.content.category }}",
+              "rightValue": "BUG",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $('AI Triage Feedback').item.json.message.content.severity }}",
+              "rightValue": "high",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-urgent",
+      "name": "High-Sev Bug?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [300, 420]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "catalyst-product", "mode": "name" },
+        "text": "=:beetle: New *high-severity bug* from players: *{{ $('AI Triage Feedback').item.json.message.content.summary }}*\nTags: {{ ($('AI Triage Feedback').item.json.message.content.tags || []).join(', ') }} — added to backlog for owner review.",
+        "otherOptions": {}
+      },
+      "id": "node-notify-owner",
+      "name": "Ping Product Owner",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [520, 340]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\", \"category\": $('AI Triage Feedback').item.json.message.content.category } }}",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Thank Reporter",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [520, 520]
+    }
+  ],
+  "connections": {
+    "Feedback Intake Webhook": { "main": [[{ "node": "AI Triage Feedback", "type": "main", "index": 0 }]] },
+    "AI Triage Feedback": { "main": [[{ "node": "Search For Duplicate", "type": "main", "index": 0 }]] },
+    "Search For Duplicate": { "main": [[{ "node": "Duplicate Exists?", "type": "main", "index": 0 }]] },
+    "Duplicate Exists?": { "main": [[{ "node": "Increment Vote On Existing", "type": "main", "index": 0 }], [{ "node": "Create Backlog Item", "type": "main", "index": 0 }]] },
+    "Create Backlog Item": { "main": [[{ "node": "High-Sev Bug?", "type": "main", "index": 0 }]] },
+    "High-Sev Bug?": { "main": [[{ "node": "Ping Product Owner", "type": "main", "index": 0 }], [{ "node": "Thank Reporter", "type": "main", "index": 0 }]] },
+    "Ping Product Owner": { "main": [[{ "node": "Thank Reporter", "type": "main", "index": 0 }]] },
+    "Increment Vote On Existing": { "main": [[{ "node": "Thank Reporter", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "catalyst-05-feedback" }
+}

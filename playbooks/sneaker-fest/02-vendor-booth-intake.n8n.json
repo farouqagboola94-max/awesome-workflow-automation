@@ -1,0 +1,216 @@
+{
+  "name": "Sneaker Fest — Vendor / Booth Application Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sneakerfest-vendor-apply",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-apply-webhook",
+      "name": "Vendor Application Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-860, 300],
+      "webhookId": "sneakerfest-vendor-apply"
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            {
+              "content": "You screen vendor applications for a sneaker convention. Score fit 0-100 based on: relevance to sneakers/streetwear, follower/reach signals, product legitimacy (no obvious counterfeits), and professionalism. Return strict JSON: {\"score\":0-100,\"recommend\":\"approve|review|reject\",\"boothSizeSuggested\":\"S|M|L\",\"reason\":\"one line\",\"redFlags\":[\"..\"]}. Flag anything hinting at counterfeit/replica goods as a red flag and cap score at 40.",
+              "role": "system"
+            },
+            {
+              "content": "=Brand: {{ $json.body.brand }}\nWebsite/IG: {{ $json.body.social }}\nProducts: {{ $json.body.products }}\nFollowers: {{ $json.body.followers }}\nBooth requested: {{ $json.body.booth_size }}\nNotes: {{ $json.body.notes }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": { "temperature": 0 }
+      },
+      "id": "node-ai-score",
+      "name": "AI Screen & Score",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [-640, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Vendors", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Brand": "={{ $('Vendor Application Webhook').item.json.body.brand }}",
+            "Contact Email": "={{ $('Vendor Application Webhook').item.json.body.email }}",
+            "Social": "={{ $('Vendor Application Webhook').item.json.body.social }}",
+            "Products": "={{ $('Vendor Application Webhook').item.json.body.products }}",
+            "Fit Score": "={{ $json.message.content.score }}",
+            "Recommendation": "={{ $json.message.content.recommend }}",
+            "Booth Size": "={{ $json.message.content.boothSizeSuggested }}",
+            "Red Flags": "={{ ($json.message.content.redFlags || []).join(', ') }}",
+            "Status": "Applied"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-create-vendor",
+      "name": "Create Vendor Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-420, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('AI Screen & Score').item.json.message.content.recommend }}",
+                    "rightValue": "approve",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "approve"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('AI Screen & Score').item.json.message.content.recommend }}",
+                    "rightValue": "reject",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "reject"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "node-route-decision",
+      "name": "Route On Recommendation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.docuseal.com/submissions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"template_id\": $env.SNEAKERFEST_BOOTH_CONTRACT_TEMPLATE, \"send_email\": true, \"submitters\": [ { \"role\": \"Vendor\", \"email\": $('Vendor Application Webhook').item.json.body.email, \"fields\": [ { \"name\": \"Brand\", \"default_value\": $('Vendor Application Webhook').item.json.body.brand }, { \"name\": \"Booth Size\", \"default_value\": $('AI Screen & Score').item.json.message.content.boothSizeSuggested } ] } ] } }}",
+        "options": {}
+      },
+      "id": "node-send-contract",
+      "name": "Send Booth Contract (e-sign)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 140]
+    },
+    {
+      "parameters": {
+        "resource": "invoice",
+        "operation": "create",
+        "additionalFields": {}
+      },
+      "id": "node-invoice",
+      "name": "Invoice Booth Deposit",
+      "type": "n8n-nodes-base.quickbooks",
+      "typeVersion": 1,
+      "position": [260, 140]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Vendors", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Create Vendor Record').item.json.id }}",
+            "Status": "Contract Sent",
+            "Floor Plan": "Pending Placement"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-update-status",
+      "name": "Move To Floor-Plan Tracker",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [480, 140]
+    },
+    {
+      "parameters": {
+        "fromEmail": "vendors@sneakerfest.com",
+        "toEmail": "={{ $('Vendor Application Webhook').item.json.body.email }}",
+        "subject": "Update on your Sneaker Fest vendor application",
+        "html": "<p>Thanks for applying to vend at Sneaker Fest. After review, we're not able to offer a booth this round — space is limited and demand was high. We'd love for you to apply again next season.</p>",
+        "options": {}
+      },
+      "id": "node-reject-email",
+      "name": "Send Polite Decline",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [40, 460]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "sneakerfest-vendors", "mode": "name" },
+        "text": "=:mag: Vendor needs *manual review* — *{{ $('Vendor Application Webhook').item.json.body.brand }}* scored {{ $('AI Screen & Score').item.json.message.content.score }}/100. Reason: {{ $('AI Screen & Score').item.json.message.content.reason }}. Red flags: {{ ($('AI Screen & Score').item.json.message.content.redFlags || []).join(', ') || 'none' }}",
+        "otherOptions": {}
+      },
+      "id": "node-review-slack",
+      "name": "Flag For Manual Review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [40, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\", \"decision\": $('AI Screen & Score').item.json.message.content.recommend } }}",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Acknowledge Applicant",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Vendor Application Webhook": { "main": [[{ "node": "AI Screen & Score", "type": "main", "index": 0 }]] },
+    "AI Screen & Score": { "main": [[{ "node": "Create Vendor Record", "type": "main", "index": 0 }]] },
+    "Create Vendor Record": { "main": [[{ "node": "Route On Recommendation", "type": "main", "index": 0 }]] },
+    "Route On Recommendation": { "main": [[{ "node": "Send Booth Contract (e-sign)", "type": "main", "index": 0 }], [{ "node": "Send Polite Decline", "type": "main", "index": 0 }], [{ "node": "Flag For Manual Review", "type": "main", "index": 0 }]] },
+    "Send Booth Contract (e-sign)": { "main": [[{ "node": "Invoice Booth Deposit", "type": "main", "index": 0 }]] },
+    "Invoice Booth Deposit": { "main": [[{ "node": "Move To Floor-Plan Tracker", "type": "main", "index": 0 }]] },
+    "Move To Floor-Plan Tracker": { "main": [[{ "node": "Acknowledge Applicant", "type": "main", "index": 0 }]] },
+    "Send Polite Decline": { "main": [[{ "node": "Acknowledge Applicant", "type": "main", "index": 0 }]] },
+    "Flag For Manual Review": { "main": [[{ "node": "Acknowledge Applicant", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "sneakerfest-02-vendor" }
+}
