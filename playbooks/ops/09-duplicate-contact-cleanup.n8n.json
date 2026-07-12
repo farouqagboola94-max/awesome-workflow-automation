@@ -1,0 +1,17 @@
+{
+  "name": "Ops — Duplicate Contact Cleanup",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 3 * * 0" }] } }, "id": "n1", "name": "Weekly Sun 03:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Contacts", "mode": "list" }, "options": {} }, "id": "n2", "name": "All Contacts", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 300] },
+    { "parameters": { "jsCode": "const seen={};const dupes=[];for(const r of $input.all()){const e=(r.json.fields?.Email||'').toLowerCase();if(!e)continue;if(seen[e])dupes.push({id:r.json.id,email:e,keep:seen[e]});else seen[e]=r.json.id;}return dupes.length?dupes.map(d=>({json:d})):[{json:{none:true}}];" }, "id": "n3", "name": "Find Duplicates", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-380, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.none }}", "rightValue": "", "operator": { "type": "string", "operation": "notExists", "singleValue": true } } ], "combinator": "and" }, "options": {} }, "id": "n4", "name": "Has Dupes?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-160, 300] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Contacts", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $json.id }}", "Duplicate Of": "={{ $json.keep }}", "Status": "Duplicate" } }, "options": {} }, "id": "n5", "name": "Flag Duplicate", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [60, 220] }
+  ],
+  "connections": {
+    "Weekly Sun 03:00": { "main": [[{ "node": "All Contacts", "type": "main", "index": 0 }]] },
+    "All Contacts": { "main": [[{ "node": "Find Duplicates", "type": "main", "index": 0 }]] },
+    "Find Duplicates": { "main": [[{ "node": "Has Dupes?", "type": "main", "index": 0 }]] },
+    "Has Dupes?": { "main": [[{ "node": "Flag Duplicate", "type": "main", "index": 0 }], []] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-09-dedupe" }
+}

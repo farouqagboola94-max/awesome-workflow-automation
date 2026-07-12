@@ -1,0 +1,17 @@
+{
+  "name": "Ops — Cross-Project Weekly Digest",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1" }] } }, "id": "n1", "name": "Weekly Mon 08:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-860, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "app6ru0ATU07D5eSG", "mode": "id" }, "table": { "__rl": true, "value": "Waitlist", "mode": "list" }, "options": {} }, "id": "n2", "name": "Catalyst Waitlist", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 200] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appCmR6YaOmAD5N98", "mode": "id" }, "table": { "__rl": true, "value": "Attendees", "mode": "list" }, "options": {} }, "id": "n3", "name": "Sneaker Attendees", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 340] },
+    { "parameters": { "url": "https://api.github.com/repos/farouqagboola94-max/awesome-workflow-automation", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "options": {} }, "id": "n4", "name": "Repo Stats", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-640, 480] },
+    { "parameters": { "jsCode": "const wl=$('Catalyst Waitlist').all().length;const at=$('Sneaker Attendees').all().length;const repo=$('Repo Stats').first().json;return [{json:{text:`*Weekly cross-project digest*\\n\\n⚡ Catalyst waitlist: ${wl}\\n👟 Sneaker Fest attendees: ${at}\\n⭐ Repo stars: ${repo.stargazers_count||'n/a'} · open issues: ${repo.open_issues_count||'n/a'}`}}];" }, "id": "n5", "name": "Compose", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-400, 340] },
+    { "parameters": { "fromEmail": "digest@example.com", "toEmail": "={{ $env.OWNER_EMAIL }}", "subject": "=Weekly cross-project digest — {{ $now.toFormat('yyyy-MM-dd') }}", "html": "=<pre style=\"font-family:inherit\">{{ $json.text }}</pre>", "options": {} }, "id": "n6", "name": "Email Digest", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-180, 340] }
+  ],
+  "connections": {
+    "Weekly Mon 08:00": { "main": [[{ "node": "Catalyst Waitlist", "type": "main", "index": 0 }, { "node": "Sneaker Attendees", "type": "main", "index": 0 }, { "node": "Repo Stats", "type": "main", "index": 0 }]] },
+    "Repo Stats": { "main": [[{ "node": "Compose", "type": "main", "index": 0 }]] },
+    "Compose": { "main": [[{ "node": "Email Digest", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-10-digest" }
+}

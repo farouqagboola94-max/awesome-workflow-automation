@@ -1,0 +1,17 @@
+{
+  "name": "Ops — KPI Anomaly Alert",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] } }, "id": "n1", "name": "Every 6h", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Orders", "mode": "list" }, "filterByFormula": "={{ \"IS_AFTER({Created}, DATEADD(NOW(),-6,'hours'))\" }}", "options": {} }, "id": "n2", "name": "Recent Orders", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 300] },
+    { "parameters": { "jsCode": "const n=$input.all().length;const expected=Number($env.EXPECTED_ORDERS_6H||10);const anomaly=n < expected*0.4;return [{json:{count:n,expected,anomaly}}];" }, "id": "n3", "name": "Check Threshold", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-380, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.anomaly }}", "rightValue": "true", "operator": { "type": "boolean", "operation": "true", "singleValue": true } } ], "combinator": "and" }, "options": {} }, "id": "n4", "name": "Anomaly?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-160, 300] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "ops", "mode": "name" }, "text": "=:chart_with_downwards_trend: Orders dropped: only {{ $json.count }} in 6h (expected ~{{ $json.expected }}). Investigate checkout/ads.", "otherOptions": {} }, "id": "n5", "name": "Alert", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [60, 220] }
+  ],
+  "connections": {
+    "Every 6h": { "main": [[{ "node": "Recent Orders", "type": "main", "index": 0 }]] },
+    "Recent Orders": { "main": [[{ "node": "Check Threshold", "type": "main", "index": 0 }]] },
+    "Check Threshold": { "main": [[{ "node": "Anomaly?", "type": "main", "index": 0 }]] },
+    "Anomaly?": { "main": [[{ "node": "Alert", "type": "main", "index": 0 }], []] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-07-anomaly" }
+}

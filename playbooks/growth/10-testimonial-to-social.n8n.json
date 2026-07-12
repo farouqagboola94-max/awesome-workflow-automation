@@ -1,0 +1,15 @@
+{
+  "name": "Growth — 5-Star Review → Social Post",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "growth-review", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Review Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "growth-review" },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{ $json.body.rating }}", "rightValue": 5, "operator": { "type": "number", "operation": "gte" } } ], "combinator": "and" }, "options": {} }, "id": "n2", "name": "5 Stars?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-600, 300] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Turn a glowing review into a short shareable social caption with the reviewer's first name and a tasteful emoji. Plain text.", "role": "system" }, { "content": "={{ $json.body.name }}: {{ $json.body.text }}" } ] }, "options": { "temperature": 0.6 } }, "id": "n3", "name": "AI Format Post", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-380, 220] },
+    { "parameters": { "operation": "create", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Content Calendar", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Title": "Testimonial", "Channel": "instagram", "Body": "={{ $json.message.content }}", "Status": "Scheduled" } }, "options": {} }, "id": "n4", "name": "Queue Testimonial Post", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-160, 220] }
+  ],
+  "connections": {
+    "Review Webhook": { "main": [[{ "node": "5 Stars?", "type": "main", "index": 0 }]] },
+    "5 Stars?": { "main": [[{ "node": "AI Format Post", "type": "main", "index": 0 }], []] },
+    "AI Format Post": { "main": [[{ "node": "Queue Testimonial Post", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-10-testimonial" }
+}

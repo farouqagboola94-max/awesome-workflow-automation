@@ -1,0 +1,15 @@
+{
+  "name": "Growth — Meeting Notes → Action Items",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "growth-meeting-notes", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Transcript Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "growth-meeting-notes" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Extract action items from a meeting transcript. Return strict JSON array of {\"task\":\"..\",\"owner\":\"name or unassigned\",\"due\":\"YYYY-MM-DD or empty\"}.", "role": "system" }, { "content": "={{ $json.body.transcript }}" } ] }, "jsonOutput": true, "options": { "temperature": 0.2 } }, "id": "n2", "name": "AI Extract Tasks", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-600, 300] },
+    { "parameters": { "fieldToSplitOut": "message.content", "options": {} }, "id": "n3", "name": "Split Tasks", "type": "n8n-nodes-base.splitOut", "typeVersion": 1, "position": [-380, 300] },
+    { "parameters": { "operation": "create", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Tasks", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Task": "={{ $json.task }}", "Owner": "={{ $json.owner }}", "Due": "={{ $json.due }}", "Status": "Todo" } }, "options": {} }, "id": "n4", "name": "Create Task", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-160, 300] }
+  ],
+  "connections": {
+    "Transcript Webhook": { "main": [[{ "node": "AI Extract Tasks", "type": "main", "index": 0 }]] },
+    "AI Extract Tasks": { "main": [[{ "node": "Split Tasks", "type": "main", "index": 0 }]] },
+    "Split Tasks": { "main": [[{ "node": "Create Task", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-07-meeting-notes" }
+}

@@ -12,8 +12,10 @@ These are working blueprints, not just diagrams: webhook triggers, branching log
 | [👟 Sneaker Fest](./sneaker-fest/) | 9 | Ticket onboarding, AI vendor/booth intake, drop/restock alerts, UGC aggregation, post-event nurture, door check-in, deposit reminders, restock matching, event-day support |
 | [🛠️ Dev-Ops](./dev-ops/) | 8 | Issue triage, CI-failure alerts, release notes, stale sweeper, dead-link checker, format lint, contributor welcome, council convention validator |
 | [🔁 Shared](./shared/) | 6 | Cart recovery, support routing, sponsor intake, press outreach, social scheduler, email bounce handling |
+| [💼 Ops](./ops/) | 10 | Invoicing, revenue/P&L reporting, expense capture, backups, anomaly alerts, lead routing, dedupe, cross-project digest |
+| [📣 Growth](./growth/) | 10 | SEO/social repurposing, content calendar, IG/YouTube scheduling, review requests, inbox triage, meeting notes, newsletters |
 
-**33 workflows total** spanning webhooks, schedules, AI classification/triage/vetting, dedupe, multi-channel fan-out, and closed-loop reporting. Full index: **[AUTOMATIONS.md](./AUTOMATIONS.md)**.
+**53 workflows total** spanning webhooks, schedules, AI classification/triage/vetting, dedupe, multi-channel fan-out, and closed-loop reporting. Full index: **[AUTOMATIONS.md](./AUTOMATIONS.md)**.
 
 ## How to use
 

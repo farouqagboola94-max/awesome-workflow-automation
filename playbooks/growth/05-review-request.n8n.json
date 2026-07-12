@@ -1,0 +1,13 @@
+{
+  "name": "Growth — Post-Purchase Review Request",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "growth-purchase", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Purchase Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "growth-purchase" },
+    { "parameters": { "amount": 3, "unit": "days" }, "id": "n2", "name": "Wait 3 Days", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [-600, 300], "webhookId": "growth-review-wait" },
+    { "parameters": { "fromEmail": "hello@example.com", "toEmail": "={{ $('Purchase Webhook').item.json.body.email }}", "subject": "How was your order? ⭐", "html": "=<p>Hi {{ $('Purchase Webhook').item.json.body.name || 'there' }}, hope you're loving it! A quick review helps us a lot:</p><p><a href=\"https://example.com/review?o={{ $('Purchase Webhook').item.json.body.order_id }}\">Leave a review →</a></p>", "options": {} }, "id": "n3", "name": "Request Review", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-380, 300] }
+  ],
+  "connections": {
+    "Purchase Webhook": { "main": [[{ "node": "Wait 3 Days", "type": "main", "index": 0 }]] },
+    "Wait 3 Days": { "main": [[{ "node": "Request Review", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-05-review" }
+}

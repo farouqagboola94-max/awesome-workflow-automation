@@ -1,0 +1,17 @@
+{
+  "name": "Growth — Instagram Post Scheduler",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 * * * *" }] } }, "id": "n1", "name": "Hourly", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Content Calendar", "mode": "list" }, "filterByFormula": "={{ \"AND({Channel}='instagram', {Status}='Scheduled', IS_BEFORE({Publish At}, NOW()))\" }}", "options": {} }, "id": "n2", "name": "Due IG Posts", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 300] },
+    { "parameters": { "method": "POST", "url": "https://graph.facebook.com/v20.0/{{ $env.IG_USER_ID }}/media", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { \"image_url\": $json.fields['Image URL'], \"caption\": $json.fields.Body } }}", "options": {} }, "id": "n3", "name": "Create IG Media", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-380, 300] },
+    { "parameters": { "method": "POST", "url": "https://graph.facebook.com/v20.0/{{ $env.IG_USER_ID }}/media_publish", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { \"creation_id\": $json.id } }}", "options": {} }, "id": "n4", "name": "Publish IG", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-160, 300] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Content Calendar", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $('Due IG Posts').item.json.id }}", "Status": "Posted" } }, "options": {} }, "id": "n5", "name": "Mark Posted", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [60, 300] }
+  ],
+  "connections": {
+    "Hourly": { "main": [[{ "node": "Due IG Posts", "type": "main", "index": 0 }]] },
+    "Due IG Posts": { "main": [[{ "node": "Create IG Media", "type": "main", "index": 0 }]] },
+    "Create IG Media": { "main": [[{ "node": "Publish IG", "type": "main", "index": 0 }]] },
+    "Publish IG": { "main": [[{ "node": "Mark Posted", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-03-ig" }
+}

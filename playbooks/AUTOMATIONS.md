@@ -1,6 +1,6 @@
 # 📒 Automation Registry
 
-Single source of truth for every automation built in the `playbooks/` set. **33 workflows** across 4 playbooks, plus one report-back loop.
+Single source of truth for every automation built in the `playbooks/` set. **53 workflows** across 6 playbooks, plus one report-back loop.
 
 - **Platform:** authored as importable **n8n** JSON (`*.n8n.json`). Each maps 1:1 to **Zapier** and **Make** — same triggers, same branches.
 - **State:** all ship **inactive** with placeholder base IDs, credential names, and `$env` secrets. Nothing runs or sends until configured.
@@ -151,6 +151,38 @@ A weekly **Routine** fires into the originating session every **Monday 08:00 UTC
 | 4 | Press / Influencer Outreach Tracker | schedule | `shared/04-press-outreach-tracker.n8n.json` |
 | 5 | Social Content Scheduler | schedule | `shared/05-social-content-scheduler.n8n.json` |
 | 6 | Email Bounce & Deliverability Handler | webhook | `shared/06-email-bounce-handler.n8n.json` |
+
+## Ops — finance, reporting & admin (10)
+
+| # | Workflow | Trigger | File |
+|---|----------|---------|------|
+| 1 | Auto-Invoice on Sale | webhook | `ops/01-invoice-on-sale.n8n.json` |
+| 2 | Daily Revenue Reconciliation | schedule | `ops/02-daily-revenue-reconciliation.n8n.json` |
+| 3 | Expense Receipt Capture | webhook | `ops/03-expense-receipt-capture.n8n.json` |
+| 4 | Weekly P&L Snapshot | schedule | `ops/04-weekly-pnl-snapshot.n8n.json` |
+| 5 | Contract & Renewal Reminder | schedule | `ops/05-contract-expiry-reminder.n8n.json` |
+| 6 | Airtable → Google Sheets Backup | schedule | `ops/06-airtable-sheets-backup.n8n.json` |
+| 7 | KPI Anomaly Alert | schedule | `ops/07-kpi-anomaly-alert.n8n.json` |
+| 8 | Lead Scoring & Routing | webhook | `ops/08-lead-scoring-routing.n8n.json` |
+| 9 | Duplicate Contact Cleanup | schedule | `ops/09-duplicate-contact-cleanup.n8n.json` |
+| 10 | Cross-Project Weekly Digest | schedule | `ops/10-cross-project-weekly-digest.n8n.json` |
+
+## Growth — content, marketing & comms (10)
+
+| # | Workflow | Trigger | File |
+|---|----------|---------|------|
+| 1 | Devlog → SEO Meta + Social Snippets | webhook | `growth/01-devlog-seo-social.n8n.json` |
+| 2 | Weekly Content Calendar Generator | schedule | `growth/02-content-calendar-generator.n8n.json` |
+| 3 | Instagram Post Scheduler | schedule | `growth/03-instagram-scheduler.n8n.json` |
+| 4 | YouTube Upload Cross-Promote | webhook | `growth/04-youtube-cross-promote.n8n.json` |
+| 5 | Post-Purchase Review Request | webhook | `growth/05-review-request.n8n.json` |
+| 6 | Email Triage & Auto-Draft | Gmail trigger | `growth/06-email-triage-autodraft.n8n.json` |
+| 7 | Meeting Notes → Action Items | webhook | `growth/07-meeting-notes-to-tasks.n8n.json` |
+| 8 | FAQ Auto-Responder | webhook | `growth/08-faq-autoresponder.n8n.json` |
+| 9 | Weekly Newsletter Compile & Send | schedule | `growth/09-newsletter-compile.n8n.json` |
+| 10 | 5-Star Review → Social Post | webhook | `growth/10-testimonial-to-social.n8n.json` |
+
+> These 20 are saved as importable definitions. Several map directly onto your connected Zapier apps (Gmail, Airtable, HubSpot, Instagram, YouTube, Resend) — I can turn them into Zapier skills once the Zapier task quota resets or is upgraded.
 
 ---
 

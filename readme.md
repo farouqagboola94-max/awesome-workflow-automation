@@ -398,6 +398,10 @@ Key stats:
 
 - **[🔁 Shared](./playbooks/shared/)** — 6 cross-event workflows: abandoned-checkout recovery, AI support routing, sponsor lead intake, press outreach, social scheduling, and email bounce handling.
 
+- **[💼 Ops](./playbooks/ops/)** — 10 back-office workflows: auto-invoicing, daily revenue reconciliation, expense-receipt capture, weekly P&L, contract reminders, Airtable→Sheets backup, KPI anomaly alerts, lead scoring/routing, duplicate cleanup, and a cross-project digest.
+
+- **[📣 Growth](./playbooks/growth/)** — 10 content/marketing workflows: devlog→SEO+social repurposing, weekly content-calendar generation, Instagram scheduling, YouTube cross-promotion, review requests, inbox triage with auto-drafts, meeting-notes→tasks, FAQ auto-responder, newsletter compile, and testimonial→social.
+
 ---
 
 ## 📝 Articles & Guides

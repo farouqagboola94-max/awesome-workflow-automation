@@ -1,0 +1,15 @@
+{
+  "name": "Ops — Auto-Invoice on Sale",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "ops-sale", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Sale Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "ops-sale" },
+    { "parameters": { "jsCode": "const b=$input.first().json.body||$input.first().json;return [{json:{email:(b.email||'').toLowerCase(),name:b.name||'Customer',amount:Number(b.amount||b.total||0),item:b.item||b.description||'Order',orderId:b.order_id||('INV-'+Date.now())}}];" }, "id": "n2", "name": "Parse Sale", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-600, 300] },
+    { "parameters": { "resource": "invoice", "operation": "create", "additionalFields": {} }, "id": "n3", "name": "Create Invoice", "type": "n8n-nodes-base.quickbooks", "typeVersion": 1, "position": [-380, 220] },
+    { "parameters": { "fromEmail": "billing@example.com", "toEmail": "={{ $('Parse Sale').item.json.email }}", "subject": "=Invoice for {{ $('Parse Sale').item.json.item }} ({{ $('Parse Sale').item.json.orderId }})", "html": "=<p>Hi {{ $('Parse Sale').item.json.name }}, thanks for your order. Amount: <strong>{{ $('Parse Sale').item.json.amount }}</strong>. Invoice attached.</p>", "options": {} }, "id": "n4", "name": "Email Invoice", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-160, 220] }
+  ],
+  "connections": {
+    "Sale Webhook": { "main": [[{ "node": "Parse Sale", "type": "main", "index": 0 }]] },
+    "Parse Sale": { "main": [[{ "node": "Create Invoice", "type": "main", "index": 0 }]] },
+    "Create Invoice": { "main": [[{ "node": "Email Invoice", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-01-invoice" }
+}

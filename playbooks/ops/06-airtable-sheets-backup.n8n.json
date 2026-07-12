@@ -1,0 +1,13 @@
+{
+  "name": "Ops — Airtable → Google Sheets Backup",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 2 * * *" }] } }, "id": "n1", "name": "Nightly 02:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "app6ru0ATU07D5eSG", "mode": "id" }, "table": { "__rl": true, "value": "Waitlist", "mode": "list" }, "options": {} }, "id": "n2", "name": "Read Table", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 300] },
+    { "parameters": { "operation": "appendOrUpdate", "documentId": { "__rl": true, "value": "={{ $env.BACKUP_SHEET_ID }}", "mode": "id" }, "sheetName": { "__rl": true, "value": "Waitlist", "mode": "list" }, "columns": { "mappingMode": "autoMapInputData", "matchingColumns": ["Email"] }, "options": {} }, "id": "n3", "name": "Sync To Sheet", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4.5, "position": [-380, 300] }
+  ],
+  "connections": {
+    "Nightly 02:00": { "main": [[{ "node": "Read Table", "type": "main", "index": 0 }]] },
+    "Read Table": { "main": [[{ "node": "Sync To Sheet", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-06-backup" }
+}

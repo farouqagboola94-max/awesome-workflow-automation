@@ -1,0 +1,15 @@
+{
+  "name": "Growth — Email Triage & Auto-Draft",
+  "nodes": [
+    { "parameters": { "pollTimes": { "item": [{ "mode": "everyMinute" }] }, "simple": false, "filters": { "readStatus": "unread" }, "options": {} }, "id": "n1", "name": "New Gmail", "type": "n8n-nodes-base.gmailTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Triage an inbound email. Return strict JSON: {\"category\":\"support|sales|press|spam|personal\",\"priority\":\"low|med|high\",\"draft\":\"a polite reply draft\"}.", "role": "system" }, { "content": "=From: {{ $json.from }}\nSubject: {{ $json.subject }}\n\n{{ $json.snippet }}" } ] }, "jsonOutput": true, "options": { "temperature": 0.3 } }, "id": "n2", "name": "AI Triage", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-600, 300] },
+    { "parameters": { "operation": "addLabels", "messageId": "={{ $('New Gmail').item.json.id }}", "labelIds": [] }, "id": "n3", "name": "Label Email", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [-380, 220] },
+    { "parameters": { "resource": "draft", "operation": "create", "subject": "=Re: {{ $('New Gmail').item.json.subject }}", "message": "={{ $('AI Triage').item.json.message.content.draft }}", "options": { "sendTo": "={{ $('New Gmail').item.json.from }}" } }, "id": "n4", "name": "Create Draft Reply", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [-160, 220] }
+  ],
+  "connections": {
+    "New Gmail": { "main": [[{ "node": "AI Triage", "type": "main", "index": 0 }]] },
+    "AI Triage": { "main": [[{ "node": "Label Email", "type": "main", "index": 0 }]] },
+    "Label Email": { "main": [[{ "node": "Create Draft Reply", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-06-email-triage" }
+}
