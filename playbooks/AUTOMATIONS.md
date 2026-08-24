@@ -12,7 +12,7 @@ Single source of truth for every automation built in the `playbooks/` set. **53 
 |----------|--------|------|
 | n8n (definitions) | ✅ Saved | All 53 committed to `playbooks/`, JSON-validated |
 | Make | 🟡 Live (capped) | Account authenticated (Farouq Agboola). **Free plan caps at 2 scenarios / 1000 ops-mo / 1 data store / no app connections.** 1 live scenario provisioned as proof (below). |
-| Zapier | 🟡 Live (on-demand) | **8 apps auto-provisioned with auth bound**: Airtable, Gmail, Resend, HubSpot, GitHub, Notion, Instagram, YouTube (219 actions). MCP executes actions **on demand**; it does not create standing event-triggered Zaps. |
+| Zapier | 🟢 Quota reset (2026-08-24) | **8 apps auto-provisioned with auth bound**: Airtable, Gmail, Resend, HubSpot, GitHub, Notion, Instagram, YouTube. As of the 2026-08-24 weekly check, execute calls no longer return `402 insufficient tasks` — the monthly task quota has reset, so the 7 pending fields + `appShared` tables + the †-skills are now ready to finish. |
 
 ### What's actually live
 
