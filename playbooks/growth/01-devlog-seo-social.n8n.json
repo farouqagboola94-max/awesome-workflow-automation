@@ -1,0 +1,13 @@
+{
+  "name": "Growth — Devlog → SEO Meta + Social Snippets",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "growth-newpost", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "New Post Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "growth-newpost" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Given a blog/devlog, produce strict JSON: {\"metaTitle\":\"<=60 chars\",\"metaDescription\":\"<=155 chars\",\"tweet\":\"<=250 chars\",\"linkedin\":\"<=400 chars\",\"tags\":[\"..\"]}.", "role": "system" }, { "content": "={{ $json.body.title }}\n\n{{ $json.body.content }}" } ] }, "jsonOutput": true, "options": { "temperature": 0.4 } }, "id": "n2", "name": "AI Repurpose", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-600, 300] },
+    { "parameters": { "operation": "create", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Content Calendar", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Title": "={{ $('New Post Webhook').item.json.body.title }}", "Meta Title": "={{ $json.message.content.metaTitle }}", "Meta Description": "={{ $json.message.content.metaDescription }}", "Body": "={{ $json.message.content.tweet }}", "Channel": "x", "Status": "Scheduled" } }, "options": {} }, "id": "n3", "name": "Queue Social", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-380, 300] }
+  ],
+  "connections": {
+    "New Post Webhook": { "main": [[{ "node": "AI Repurpose", "type": "main", "index": 0 }]] },
+    "AI Repurpose": { "main": [[{ "node": "Queue Social", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-01-seo-social" }
+}

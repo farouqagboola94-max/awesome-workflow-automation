@@ -1,0 +1,17 @@
+{
+  "name": "Catalyst — Early-Access Churn Win-Back",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 11 * * 3" }] } }, "id": "n1", "name": "Weekly Wed 11:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-860, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appCatalystWaitlist", "mode": "id" }, "table": { "__rl": true, "value": "Players", "mode": "list" }, "filterByFormula": "={{ \"AND({Status}='Active', IS_BEFORE({Last Seen}, DATEADD(NOW(),-14,'days')), {Winback Sent}=0)\" }}", "options": {} }, "id": "n2", "name": "Find Dormant Players", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 300] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Write a warm 60-word win-back email for a game player who hasn't logged in for 2 weeks. Tease what's new, no guilt-trip. Return strict JSON {\"subject\":\"..\",\"body\":\"..\"}.", "role": "system" }, { "content": "=Player: {{ $json.fields.Name }}, last progress: {{ $json.fields['Last Milestone'] }}" } ] }, "jsonOutput": true, "options": { "temperature": 0.5 } }, "id": "n3", "name": "Draft Win-Back", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-420, 300] },
+    { "parameters": { "fromEmail": "hello@catalyst-game.com", "toEmail": "={{ $('Find Dormant Players').item.json.fields.Email }}", "subject": "={{ $json.message.content.subject }}", "html": "={{ $json.message.content.body }}", "options": {} }, "id": "n4", "name": "Send Win-Back", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-200, 300] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appCatalystWaitlist", "mode": "id" }, "table": { "__rl": true, "value": "Players", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $('Find Dormant Players').item.json.id }}", "Winback Sent": true, "Winback Sent At": "={{ $now.toISO() }}" } }, "options": {} }, "id": "n5", "name": "Mark Win-Back Sent", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [20, 300] }
+  ],
+  "connections": {
+    "Weekly Wed 11:00": { "main": [[{ "node": "Find Dormant Players", "type": "main", "index": 0 }]] },
+    "Find Dormant Players": { "main": [[{ "node": "Draft Win-Back", "type": "main", "index": 0 }]] },
+    "Draft Win-Back": { "main": [[{ "node": "Send Win-Back", "type": "main", "index": 0 }]] },
+    "Send Win-Back": { "main": [[{ "node": "Mark Win-Back Sent", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "catalyst-10-winback" }
+}

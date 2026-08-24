@@ -1,0 +1,13 @@
+{
+  "name": "Ops — Expense Receipt Capture",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "ops-receipt", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Receipt Email Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "ops-receipt" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Extract expense data from a receipt/email. Return strict JSON: {\"vendor\":\"..\",\"amount\":0,\"currency\":\"..\",\"date\":\"YYYY-MM-DD\",\"category\":\"travel|food|software|marketing|supplies|other\"}.", "role": "system" }, { "content": "={{ $json.body.text || $json.body.subject }}" } ] }, "jsonOutput": true, "options": { "temperature": 0 } }, "id": "n2", "name": "AI Extract", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-600, 300] },
+    { "parameters": { "operation": "create", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Expenses", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Vendor": "={{ $json.message.content.vendor }}", "Amount": "={{ $json.message.content.amount }}", "Currency": "={{ $json.message.content.currency }}", "Date": "={{ $json.message.content.date }}", "Category": "={{ $json.message.content.category }}" } }, "options": {} }, "id": "n3", "name": "Log Expense", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-380, 300] }
+  ],
+  "connections": {
+    "Receipt Email Webhook": { "main": [[{ "node": "AI Extract", "type": "main", "index": 0 }]] },
+    "AI Extract": { "main": [[{ "node": "Log Expense", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-03-expense" }
+}

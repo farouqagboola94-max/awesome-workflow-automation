@@ -1,0 +1,19 @@
+{
+  "name": "Shared — Social Content Scheduler",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 * * * *" }] } }, "id": "n1", "name": "Hourly", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-860, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Content Calendar", "mode": "list" }, "filterByFormula": "={{ \"AND({Status}='Scheduled', IS_BEFORE({Publish At}, NOW()))\" }}", "options": {} }, "id": "n2", "name": "Get Due Posts", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 300] },
+    { "parameters": { "rules": { "values": [ { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.fields.Channel }}", "rightValue": "x", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "outputKey": "x" }, { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.fields.Channel }}", "rightValue": "discord", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "outputKey": "discord" } ] }, "options": {} }, "id": "n3", "name": "By Channel", "type": "n8n-nodes-base.switch", "typeVersion": 3, "position": [-420, 300] },
+    { "parameters": { "authentication": "oAuth2", "text": "={{ $json.fields.Body }}", "additionalFields": {} }, "id": "n4", "name": "Post To X", "type": "n8n-nodes-base.twitter", "typeVersion": 2, "position": [-200, 200] },
+    { "parameters": { "method": "POST", "url": "={{ $env.SHARED_DISCORD_WEBHOOK }}", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { \"content\": $json.fields.Body } }}", "options": {} }, "id": "n5", "name": "Post To Discord", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-200, 400] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Content Calendar", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $json.fields ? $json.id : $json.id }}", "Status": "Posted", "Posted At": "={{ $now.toISO() }}" } }, "options": {} }, "id": "n6", "name": "Mark Posted", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [40, 300] }
+  ],
+  "connections": {
+    "Hourly": { "main": [[{ "node": "Get Due Posts", "type": "main", "index": 0 }]] },
+    "Get Due Posts": { "main": [[{ "node": "By Channel", "type": "main", "index": 0 }]] },
+    "By Channel": { "main": [[{ "node": "Post To X", "type": "main", "index": 0 }], [{ "node": "Post To Discord", "type": "main", "index": 0 }]] },
+    "Post To X": { "main": [[{ "node": "Mark Posted", "type": "main", "index": 0 }]] },
+    "Post To Discord": { "main": [[{ "node": "Mark Posted", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "shared-05-scheduler" }
+}

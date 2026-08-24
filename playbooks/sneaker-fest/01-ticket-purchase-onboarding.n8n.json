@@ -1,0 +1,130 @@
+{
+  "name": "Sneaker Fest — Ticket Purchase Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sneakerfest-ticket-purchase",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-order-webhook",
+      "name": "Ticket Purchase Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-820, 300],
+      "webhookId": "sneakerfest-ticket-purchase"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise order from Shopify/Eventbrite, classify ticket tier, build a QR token\nconst body = $input.first().json.body || $input.first().json;\nconst email = (body.email || body.customer?.email || '').trim().toLowerCase();\nconst name = body.name || [body.customer?.first_name, body.customer?.last_name].filter(Boolean).join(' ') || 'Guest';\nconst lineItem = (body.line_items && body.line_items[0]) || {};\nconst title = (lineItem.title || body.ticket_type || 'General Admission').toLowerCase();\nlet tier = 'GA';\nif (title.includes('vip')) tier = 'VIP';\nelse if (title.includes('reseller') || title.includes('vendor')) tier = 'Reseller';\nelse if (title.includes('early')) tier = 'Early Bird';\nconst orderId = body.order_id || body.id || ('SF-' + Date.now());\nconst qrToken = Buffer.from(`${orderId}:${email}`).toString('base64url');\nreturn [{ json: {\n  email, name, tier, orderId, qrToken,\n  quantity: lineItem.quantity || 1,\n  qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=https://sneakerfest.com/checkin/${qrToken}`,\n  purchasedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "node-parse-order",
+      "name": "Parse Order & Tier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Attendees", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "Email": "={{ $json.email }}",
+            "Ticket Tier": "={{ $json.tier }}",
+            "Order ID": "={{ $json.orderId }}",
+            "Quantity": "={{ $json.quantity }}",
+            "QR Token": "={{ $json.qrToken }}",
+            "Checked In": false,
+            "Purchased At": "={{ $json.purchasedAt }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-create-attendee",
+      "name": "Add To Attendee CRM",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-380, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "create",
+        "email": "={{ $('Parse Order & Tier').item.json.email }}",
+        "additionalFields": {
+          "firstName": "={{ $('Parse Order & Tier').item.json.name.split(' ')[0] }}"
+        }
+      },
+      "id": "node-add-list",
+      "name": "Add To Email List",
+      "type": "n8n-nodes-base.mailerLite",
+      "typeVersion": 2,
+      "position": [-160, 180]
+    },
+    {
+      "parameters": {
+        "fromEmail": "tickets@sneakerfest.com",
+        "toEmail": "={{ $('Parse Order & Tier').item.json.email }}",
+        "subject": "=Your Sneaker Fest {{ $('Parse Order & Tier').item.json.tier }} pass is ready 👟",
+        "html": "=<h1>You're in, {{ $('Parse Order & Tier').item.json.name }}!</h1><p>Ticket tier: <strong>{{ $('Parse Order & Tier').item.json.tier }}</strong> · Order {{ $('Parse Order & Tier').item.json.orderId }}</p><p>Show this QR code at the door for fast check-in:</p><p><img src=\"{{ $('Parse Order & Tier').item.json.qrUrl }}\" alt=\"Entry QR\" width=\"240\" /></p><p><strong>Doors:</strong> 10:00 AM · <strong>Venue:</strong> Hall B, Downtown Convention Center. <a href=\"https://sneakerfest.com/venue-map\">Venue map & parking →</a></p><p>{{ $('Parse Order & Tier').item.json.tier === 'VIP' ? 'VIP perk: skip the main line and use the VIP entrance on the north side. Early access at 9:00 AM.' : '' }}</p>",
+        "options": {}
+      },
+      "id": "node-confirm-email",
+      "name": "Send Pass + Venue Map",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [-160, 340]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse Order & Tier').item.json.tier }}",
+              "rightValue": "VIP,Reseller",
+              "operator": { "type": "string", "operation": "regex" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-premium",
+      "name": "Premium Tier?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [80, 340]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "sneakerfest-sales", "mode": "name" },
+        "text": "=:money_with_wings: New *{{ $('Parse Order & Tier').item.json.tier }}* ticket — {{ $('Parse Order & Tier').item.json.name }} ({{ $('Parse Order & Tier').item.json.quantity }}×). Order {{ $('Parse Order & Tier').item.json.orderId }}.",
+        "otherOptions": {}
+      },
+      "id": "node-slack-sales",
+      "name": "Notify Sales Channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [300, 260]
+    }
+  ],
+  "connections": {
+    "Ticket Purchase Webhook": { "main": [[{ "node": "Parse Order & Tier", "type": "main", "index": 0 }]] },
+    "Parse Order & Tier": { "main": [[{ "node": "Add To Attendee CRM", "type": "main", "index": 0 }]] },
+    "Add To Attendee CRM": { "main": [[{ "node": "Add To Email List", "type": "main", "index": 0 }, { "node": "Send Pass + Venue Map", "type": "main", "index": 0 }]] },
+    "Send Pass + Venue Map": { "main": [[{ "node": "Premium Tier?", "type": "main", "index": 0 }]] },
+    "Premium Tier?": { "main": [[{ "node": "Notify Sales Channel", "type": "main", "index": 0 }], []] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "sneakerfest-01-ticket" }
+}

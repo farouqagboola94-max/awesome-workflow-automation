@@ -1,0 +1,17 @@
+{
+  "name": "Catalyst — Bug → Discord Tracking Thread",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "catalyst-bug-confirmed", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Confirmed Bug Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "catalyst-bug-confirmed" },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.body.severity }}", "rightValue": "high", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "options": {} }, "id": "n2", "name": "High Severity?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-640, 300] },
+    { "parameters": { "method": "POST", "url": "=https://discord.com/api/v10/channels/{{ $env.CATALYST_BUGS_FORUM_CHANNEL }}/threads", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { \"name\": ('🐛 ' + $json.body.summary).slice(0,90), \"message\": { \"content\": '**Severity:** ' + $json.body.severity + '\\n**Repro:** ' + ($json.body.repro || 'n/a') + '\\n**Reporter:** ' + ($json.body.reporter || 'anon') + '\\nTracking here — post updates in-thread.' }, \"applied_tags\": [] } }}", "options": {} }, "id": "n3", "name": "Create Forum Thread", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-420, 220] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appCatalystRoadmap", "mode": "id" }, "table": { "__rl": true, "value": "Backlog", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $('Confirmed Bug Webhook').item.json.body.backlog_id }}", "Discord Thread": "={{ $json.id }}", "Status": "Tracking" } }, "options": {} }, "id": "n4", "name": "Link Thread To Backlog", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-200, 220] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "catalyst-engineering", "mode": "name" }, "text": "=:bug: High-sev bug tracking thread opened: *{{ $('Confirmed Bug Webhook').item.json.body.summary }}* — triage owner please claim.", "otherOptions": {} }, "id": "n5", "name": "Ping Engineering", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [20, 220] }
+  ],
+  "connections": {
+    "Confirmed Bug Webhook": { "main": [[{ "node": "High Severity?", "type": "main", "index": 0 }]] },
+    "High Severity?": { "main": [[{ "node": "Create Forum Thread", "type": "main", "index": 0 }], []] },
+    "Create Forum Thread": { "main": [[{ "node": "Link Thread To Backlog", "type": "main", "index": 0 }]] },
+    "Link Thread To Backlog": { "main": [[{ "node": "Ping Engineering", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "catalyst-09-bug-thread" }
+}

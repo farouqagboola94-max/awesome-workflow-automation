@@ -1,0 +1,17 @@
+{
+  "name": "Dev-Ops — Release Notes On Tag",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "gh-tag-push", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Tag Push Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "gh-tag-push" },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.body.ref_type }}", "rightValue": "tag", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "options": {} }, "id": "n2", "name": "Is Tag?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-600, 300] },
+    { "parameters": { "url": "=https://api.github.com/repos/{{ $json.body.repository.full_name }}/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=30", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "options": {} }, "id": "n3", "name": "List Recent Merged PRs", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-380, 220] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Write concise release notes in Markdown grouped by Added / Changed / Fixed from these merged PR titles. Skip merge-noise. Return Markdown only.", "role": "system" }, { "content": "={{ ($json.map ? $json.map(p => '- ' + p.title).join('\\n') : JSON.stringify($json)).slice(0, 4000) }}" } ] }, "options": { "temperature": 0.2 } }, "id": "n4", "name": "Draft Changelog", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-160, 220] },
+    { "parameters": { "resource": "release", "operation": "create", "owner": "={{ $('Tag Push Webhook').item.json.body.repository.owner.login }}", "repository": "={{ $('Tag Push Webhook').item.json.body.repository.name }}", "additionalFields": { "tag_name": "={{ $('Tag Push Webhook').item.json.body.ref }}", "name": "={{ $('Tag Push Webhook').item.json.body.ref }}", "body": "={{ $json.message.content }}" } }, "id": "n5", "name": "Create GitHub Release", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [80, 220] }
+  ],
+  "connections": {
+    "Tag Push Webhook": { "main": [[{ "node": "Is Tag?", "type": "main", "index": 0 }]] },
+    "Is Tag?": { "main": [[{ "node": "List Recent Merged PRs", "type": "main", "index": 0 }], []] },
+    "List Recent Merged PRs": { "main": [[{ "node": "Draft Changelog", "type": "main", "index": 0 }]] },
+    "Draft Changelog": { "main": [[{ "node": "Create GitHub Release", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "devops-03-release-notes" }
+}

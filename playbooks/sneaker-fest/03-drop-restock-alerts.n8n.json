@@ -1,0 +1,117 @@
+{
+  "name": "Sneaker Fest — Drop & Restock Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sneakerfest-inventory-event",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-inv-webhook",
+      "name": "Shopify Inventory Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-840, 300],
+      "webhookId": "sneakerfest-inventory-event"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detect a live drop (0 -> N) or a restock, and whether it's a limited pair\nconst b = $input.first().json.body || $input.first().json;\nconst available = Number(b.available ?? b.inventory_quantity ?? 0);\nconst previous = Number(b.old_available ?? b.previous_quantity ?? 0);\nconst title = b.title || b.product_title || 'New Pair';\nconst tags = (b.tags || '').toLowerCase();\nconst isLimited = /limited|exclusive|deadstock|collab/.test(tags);\nlet eventType = null;\nif (previous <= 0 && available > 0) eventType = 'DROP';\nelse if (previous > 0 && available > previous) eventType = 'RESTOCK';\nif (!eventType) { return []; }\nreturn [{ json: {\n  eventType, title, available, isLimited,\n  handle: b.handle || '',\n  price: b.price || '',\n  image: b.image || b.featured_image || '',\n  url: `https://sneakerfest.com/products/${b.handle || ''}`,\n  detectedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "node-detect",
+      "name": "Detect Drop / Restock",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-620, 300]
+    },
+    {
+      "parameters": {
+        "operation": "createShortLink",
+        "long_url": "={{ $json.url }}?utm_source=drop_alert&utm_medium=social",
+        "additionalFields": {}
+      },
+      "id": "node-bitly",
+      "name": "Make Trackable Link",
+      "type": "n8n-nodes-base.bitly",
+      "typeVersion": 1,
+      "position": [-400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Detect Drop / Restock').item.json;\nconst link = $input.first().json.link || d.url;\nconst fire = d.isLimited ? '🔥🔥' : '🔥';\nconst verb = d.eventType === 'DROP' ? 'JUST DROPPED' : 'RESTOCKED';\nconst social = `${fire} ${d.title} ${verb} ${fire}\\n${d.isLimited ? 'Limited pairs — ' : ''}${d.available} available now.\\nCop before it's gone 👉 ${link}\\n#SneakerFest #kicks`;\nreturn [{ json: { ...d, link, social } }];"
+      },
+      "id": "node-compose",
+      "name": "Compose Alert Copy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-180, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "text": "={{ $json.social }}",
+        "additionalFields": {}
+      },
+      "id": "node-x",
+      "name": "Post To X",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [80, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SNEAKERFEST_DISCORD_DROPS_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": \"@everyone\\n\" + $json.social } }}",
+        "options": {}
+      },
+      "id": "node-discord",
+      "name": "Announce In Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 280]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Waitlist Notify", "mode": "list" },
+        "filterByFormula": "={{ \"{Product Handle} = '\" + $json.handle + \"'\" }}",
+        "options": {}
+      },
+      "id": "node-waitlist",
+      "name": "Get Product Waitlist",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [80, 420]
+    },
+    {
+      "parameters": {
+        "fromEmail": "drops@sneakerfest.com",
+        "toEmail": "={{ $json.fields.Email }}",
+        "subject": "={{ $('Compose Alert Copy').item.json.title }} is available now 👟",
+        "html": "=<h1>It's live.</h1><p>The pair you were waiting for — <strong>{{ $('Compose Alert Copy').item.json.title }}</strong> — just went {{ $('Compose Alert Copy').item.json.eventType === 'DROP' ? 'live' : 'back in stock' }}.</p><p><a href=\"{{ $('Compose Alert Copy').item.json.link }}\">Grab yours →</a></p>",
+        "options": {}
+      },
+      "id": "node-notify-waitlist",
+      "name": "Notify Waitlist",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [320, 420]
+    }
+  ],
+  "connections": {
+    "Shopify Inventory Webhook": { "main": [[{ "node": "Detect Drop / Restock", "type": "main", "index": 0 }]] },
+    "Detect Drop / Restock": { "main": [[{ "node": "Make Trackable Link", "type": "main", "index": 0 }]] },
+    "Make Trackable Link": { "main": [[{ "node": "Compose Alert Copy", "type": "main", "index": 0 }]] },
+    "Compose Alert Copy": { "main": [[{ "node": "Post To X", "type": "main", "index": 0 }, { "node": "Announce In Discord", "type": "main", "index": 0 }, { "node": "Get Product Waitlist", "type": "main", "index": 0 }]] },
+    "Get Product Waitlist": { "main": [[{ "node": "Notify Waitlist", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "sneakerfest-03-drops" }
+}

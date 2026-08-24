@@ -1,0 +1,13 @@
+{
+  "name": "Ops — Contract & Renewal Reminder",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }] } }, "id": "n1", "name": "Daily 09:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "app6ru0ATU07D5eSG", "mode": "id" }, "table": { "__rl": true, "value": "Vendors", "mode": "list" }, "filterByFormula": "={{ \"AND(IS_AFTER({Contract Renewal Date}, TODAY()), IS_BEFORE({Contract Renewal Date}, DATEADD(TODAY(),14,'days')))\" }}", "options": {} }, "id": "n2", "name": "Expiring Soon", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 300] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "ops", "mode": "name" }, "text": "=:calendar: Contract for *{{ $json.fields['Vendor Name'] }}* renews {{ $json.fields['Contract Renewal Date'] }}. Review terms.", "otherOptions": {} }, "id": "n3", "name": "Remind Ops", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [-380, 300] }
+  ],
+  "connections": {
+    "Daily 09:00": { "main": [[{ "node": "Expiring Soon", "type": "main", "index": 0 }]] },
+    "Expiring Soon": { "main": [[{ "node": "Remind Ops", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-05-contract" }
+}

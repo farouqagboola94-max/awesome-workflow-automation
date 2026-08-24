@@ -1,0 +1,19 @@
+{
+  "name": "Dev-Ops — Stale Issue & PR Sweeper",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }] } }, "id": "n1", "name": "Daily 06:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "url": "=https://api.github.com/repos/{{ $env.GH_REPO }}/issues?state=open&sort=updated&direction=asc&per_page=50", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "options": {} }, "id": "n2", "name": "List Open Issues", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-600, 300] },
+    { "parameters": { "fieldToSplitOut": "data", "options": {} }, "id": "n3", "name": "Split", "type": "n8n-nodes-base.splitOut", "typeVersion": 1, "position": [-400, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $now.diff(DateTime.fromISO($json.updated_at), 'days').days }}", "rightValue": 30, "operator": { "type": "number", "operation": "gt" } } ], "combinator": "and" }, "options": {} }, "id": "n4", "name": "Stale > 30d?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-200, 300] },
+    { "parameters": { "resource": "issue", "operation": "createComment", "owner": "={{ $env.GH_OWNER }}", "repository": "={{ $env.GH_REPO_NAME }}", "issueNumber": "={{ $json.number }}", "body": "This has been inactive for 30+ days. It will be closed in 7 days if there's no further activity. Comment to keep it open. 🕰️" }, "id": "n5", "name": "Comment Stale Warning", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [20, 220] },
+    { "parameters": { "resource": "issue", "operation": "edit", "owner": "={{ $env.GH_OWNER }}", "repository": "={{ $env.GH_REPO_NAME }}", "issueNumber": "={{ $json.number }}", "editFields": { "labels": "stale" } }, "id": "n6", "name": "Label Stale", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [240, 220] }
+  ],
+  "connections": {
+    "Daily 06:00": { "main": [[{ "node": "List Open Issues", "type": "main", "index": 0 }]] },
+    "List Open Issues": { "main": [[{ "node": "Split", "type": "main", "index": 0 }]] },
+    "Split": { "main": [[{ "node": "Stale > 30d?", "type": "main", "index": 0 }]] },
+    "Stale > 30d?": { "main": [[{ "node": "Comment Stale Warning", "type": "main", "index": 0 }], []] },
+    "Comment Stale Warning": { "main": [[{ "node": "Label Stale", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "devops-04-stale-sweeper" }
+}

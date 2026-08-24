@@ -1,0 +1,18 @@
+{
+  "name": "Dev-Ops — GitHub Issue AI Triage",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "gh-issue-opened", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Issue Opened Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "gh-issue-opened" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "You triage GitHub issues for an awesome-list / open-source repo. Return strict JSON: {\"type\":\"bug|enhancement|question|submission|spam\",\"priority\":\"low|medium|high\",\"labels\":[\"..\"],\"needsInfo\":true|false,\"reply\":\"one short maintainer-style comment\"}. type=submission means a request to add a tool to the list.", "role": "system" }, { "content": "=Title: {{ $json.body.issue.title }}\n\nBody: {{ $json.body.issue.body }}" } ] }, "jsonOutput": true, "options": { "temperature": 0 } }, "id": "n2", "name": "AI Triage", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-600, 300] },
+    { "parameters": { "resource": "issue", "operation": "edit", "owner": "={{ $json.body.repository.owner.login }}", "repository": "={{ $json.body.repository.name }}", "issueNumber": "={{ $('Issue Opened Webhook').item.json.body.issue.number }}", "editFields": { "labels": "={{ $json.message.content.labels.join(',') }}" } }, "id": "n3", "name": "Apply Labels", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [-380, 220] },
+    { "parameters": { "resource": "issue", "operation": "createComment", "owner": "={{ $('Issue Opened Webhook').item.json.body.repository.owner.login }}", "repository": "={{ $('Issue Opened Webhook').item.json.body.repository.name }}", "issueNumber": "={{ $('Issue Opened Webhook').item.json.body.issue.number }}", "body": "={{ $('AI Triage').item.json.message.content.reply }}" }, "id": "n4", "name": "Post Triage Comment", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [-160, 220] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $('AI Triage').item.json.message.content.type }}", "rightValue": "spam", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "options": {} }, "id": "n5", "name": "Is Spam?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-380, 420] },
+    { "parameters": { "resource": "issue", "operation": "edit", "owner": "={{ $('Issue Opened Webhook').item.json.body.repository.owner.login }}", "repository": "={{ $('Issue Opened Webhook').item.json.body.repository.name }}", "issueNumber": "={{ $('Issue Opened Webhook').item.json.body.issue.number }}", "editFields": { "state": "closed" } }, "id": "n6", "name": "Close Spam", "type": "n8n-nodes-base.github", "typeVersion": 1, "position": [-160, 420] }
+  ],
+  "connections": {
+    "Issue Opened Webhook": { "main": [[{ "node": "AI Triage", "type": "main", "index": 0 }]] },
+    "AI Triage": { "main": [[{ "node": "Apply Labels", "type": "main", "index": 0 }, { "node": "Is Spam?", "type": "main", "index": 0 }]] },
+    "Apply Labels": { "main": [[{ "node": "Post Triage Comment", "type": "main", "index": 0 }]] },
+    "Is Spam?": { "main": [[{ "node": "Close Spam", "type": "main", "index": 0 }], []] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "devops-01-issue-triage" }
+}

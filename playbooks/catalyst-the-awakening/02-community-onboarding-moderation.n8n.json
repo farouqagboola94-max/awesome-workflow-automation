@@ -1,0 +1,235 @@
+{
+  "name": "Catalyst — Community Onboarding & AI Moderation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "catalyst-discord-event",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-discord-webhook",
+      "name": "Discord Gateway Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-760, 300],
+      "webhookId": "catalyst-discord-event"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "GUILD_MEMBER_ADD",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "new_member"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "MESSAGE_CREATE",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "new_message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-switch-event",
+      "name": "Route Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-540, 300]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://discord.com/api/v10/guilds/{{ $json.body.guild_id }}/members/{{ $json.body.user.id }}/roles/{{ $env.CATALYST_ROLE_UNVERIFIED }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "node-assign-role",
+      "name": "Assign Unverified Role",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-320, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/users/@me/channels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"recipient_id\": $json.body.user.id } }}",
+        "options": {}
+      },
+      "id": "node-open-dm",
+      "name": "Open Welcome DM Channel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $json.id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": \"Welcome to Catalyst: The Awakening ⚡\\nReact with 🎮 (player), 🛠️ (creator), or 📣 (community) in #pick-your-path to unlock your channels. Read #rules to get verified.\" } }}",
+        "options": {}
+      },
+      "id": "node-send-welcome-dm",
+      "name": "Send Welcome DM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 160]
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Discord moderation classifier for a game community. Classify the message into exactly one label: SPAM, SCAM, TOXIC, QUESTION, or CLEAN. Return strict JSON: {\"label\":\"...\",\"confidence\":0-1,\"reason\":\"short\"}. SCAM = free nitro / crypto / airdrop / phishing links. QUESTION = a genuine player question needing an answer.",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.body.content }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": { "temperature": 0 }
+      },
+      "id": "node-ai-classify",
+      "name": "AI Classify Message",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [-320, 440]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.content.label }}",
+                    "rightValue": "SPAM,SCAM,TOXIC",
+                    "operator": { "type": "string", "operation": "regex" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "violation"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.content.label }}",
+                    "rightValue": "QUESTION",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "question"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "node-switch-moderation",
+      "name": "Moderation Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-100, 440]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://discord.com/api/v10/channels/{{ $('Discord Gateway Event').item.json.body.channel_id }}/messages/{{ $('Discord Gateway Event').item.json.body.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "node-delete-message",
+      "name": "Delete Violating Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [140, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $env.CATALYST_MODLOG_CHANNEL }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": \"🚨 Auto-removed **\" + $('AI Classify Message').item.json.message.content.label + \"** from <@\" + $('Discord Gateway Event').item.json.body.author.id + \"> (\" + $('AI Classify Message').item.json.message.content.confidence + \" conf): \" + $('AI Classify Message').item.json.message.content.reason } }}",
+        "options": {}
+      },
+      "id": "node-modlog",
+      "name": "Post To Mod Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [360, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $('Discord Gateway Event').item.json.body.channel_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": \"💡 Looks like a question! A moderator has been pinged. Meanwhile, check #faq — most answers live there.\", \"message_reference\": { \"message_id\": $('Discord Gateway Event').item.json.body.id } } }}",
+        "options": {}
+      },
+      "id": "node-faq-nudge",
+      "name": "Nudge To FAQ + Ping Mods",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [140, 540]
+    }
+  ],
+  "connections": {
+    "Discord Gateway Event": { "main": [[{ "node": "Route Event Type", "type": "main", "index": 0 }]] },
+    "Route Event Type": { "main": [[{ "node": "Assign Unverified Role", "type": "main", "index": 0 }], [{ "node": "AI Classify Message", "type": "main", "index": 0 }]] },
+    "Assign Unverified Role": { "main": [[{ "node": "Open Welcome DM Channel", "type": "main", "index": 0 }]] },
+    "Open Welcome DM Channel": { "main": [[{ "node": "Send Welcome DM", "type": "main", "index": 0 }]] },
+    "AI Classify Message": { "main": [[{ "node": "Moderation Decision", "type": "main", "index": 0 }]] },
+    "Moderation Decision": { "main": [[{ "node": "Delete Violating Message", "type": "main", "index": 0 }], [{ "node": "Nudge To FAQ + Ping Mods", "type": "main", "index": 0 }], []] },
+    "Delete Violating Message": { "main": [[{ "node": "Post To Mod Log", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "catalyst-02-community" }
+}

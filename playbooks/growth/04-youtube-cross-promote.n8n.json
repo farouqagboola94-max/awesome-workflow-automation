@@ -1,0 +1,14 @@
+{
+  "name": "Growth — YouTube Upload Cross-Promote",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "growth-yt-upload", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "YT Upload Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "growth-yt-upload" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Given a new YouTube video title + description, write cross-promo copy. Return strict JSON: {\"tweet\":\"..\",\"discord\":\"..\",\"newsletter\":\"..\"}.", "role": "system" }, { "content": "={{ $json.body.title }} — {{ $json.body.url }}" } ] }, "jsonOutput": true, "options": { "temperature": 0.5 } }, "id": "n2", "name": "AI Promo Copy", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-600, 300] },
+    { "parameters": { "authentication": "oAuth2", "text": "={{ $json.message.content.tweet }}", "additionalFields": {} }, "id": "n3", "name": "Post To X", "type": "n8n-nodes-base.twitter", "typeVersion": 2, "position": [-380, 200] },
+    { "parameters": { "method": "POST", "url": "={{ $env.SHARED_DISCORD_WEBHOOK }}", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { \"content\": $json.message.content.discord } }}", "options": {} }, "id": "n4", "name": "Post To Discord", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-380, 380] }
+  ],
+  "connections": {
+    "YT Upload Webhook": { "main": [[{ "node": "AI Promo Copy", "type": "main", "index": 0 }]] },
+    "AI Promo Copy": { "main": [[{ "node": "Post To X", "type": "main", "index": 0 }, { "node": "Post To Discord", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-04-youtube" }
+}

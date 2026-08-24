@@ -1,0 +1,18 @@
+{
+  "name": "Sneaker Fest — Event-Day Support & Lost-and-Found",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "sneakerfest-help", "responseMode": "responseNode", "options": {} }, "id": "n1", "name": "Help Request Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "sneakerfest-help" },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Triage an on-site event help request. Return strict JSON: {\"type\":\"medical|security|lost_found|ticket|vendor|general\",\"urgent\":true|false,\"summary\":\"one line\",\"reply\":\"reassuring short reply with next step\"}. medical/security are always urgent.", "role": "system" }, { "content": "={{ $json.body.message }} (location: {{ $json.body.location }})" } ] }, "jsonOutput": true, "options": { "temperature": 0 } }, "id": "n2", "name": "AI Triage Request", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-640, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.message.content.urgent }}", "rightValue": "true", "operator": { "type": "boolean", "operation": "true", "singleValue": true } } ], "combinator": "and" }, "options": {} }, "id": "n3", "name": "Urgent?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-420, 300] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "event-ops-urgent", "mode": "name" }, "text": "=:rotating_light: *{{ $('AI Triage Request').item.json.message.content.type }}* at {{ $('Help Request Webhook').item.json.body.location }} — {{ $('AI Triage Request').item.json.message.content.summary }}. Respond NOW.", "otherOptions": {} }, "id": "n4", "name": "Alert Ops (Urgent)", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [-200, 200] },
+    { "parameters": { "operation": "create", "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" }, "table": { "__rl": true, "value": "Help Log", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "Type": "={{ $('AI Triage Request').item.json.message.content.type }}", "Summary": "={{ $('AI Triage Request').item.json.message.content.summary }}", "Location": "={{ $('Help Request Webhook').item.json.body.location }}", "Urgent": "={{ $('AI Triage Request').item.json.message.content.urgent }}", "Status": "Open" } }, "options": {} }, "id": "n5", "name": "Log Request", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-200, 400] },
+    { "parameters": { "respondWith": "json", "responseBody": "={{ { \"reply\": $('AI Triage Request').item.json.message.content.reply } }}", "options": {} }, "id": "n6", "name": "Reply To Attendee", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [40, 300] }
+  ],
+  "connections": {
+    "Help Request Webhook": { "main": [[{ "node": "AI Triage Request", "type": "main", "index": 0 }]] },
+    "AI Triage Request": { "main": [[{ "node": "Urgent?", "type": "main", "index": 0 }]] },
+    "Urgent?": { "main": [[{ "node": "Alert Ops (Urgent)", "type": "main", "index": 0 }, { "node": "Log Request", "type": "main", "index": 0 }], [{ "node": "Log Request", "type": "main", "index": 0 }]] },
+    "Log Request": { "main": [[{ "node": "Reply To Attendee", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "sneakerfest-09-support" }
+}

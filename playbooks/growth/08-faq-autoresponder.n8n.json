@@ -1,0 +1,15 @@
+{
+  "name": "Growth — FAQ Auto-Responder",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "growth-faq", "responseMode": "responseNode", "options": {} }, "id": "n1", "name": "Question Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "growth-faq" },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "FAQ", "mode": "list" }, "options": {} }, "id": "n2", "name": "Load FAQ", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 300] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Answer the user's question using ONLY the provided FAQ knowledge base. If not covered, return {\"answer\":\"\",\"escalate\":true}. Else {\"answer\":\"..\",\"escalate\":false}. Strict JSON.", "role": "system" }, { "content": "=Question: {{ $('Question Webhook').item.json.body.question }}\n\nFAQ: {{ JSON.stringify($json) }}" } ] }, "jsonOutput": true, "options": { "temperature": 0 } }, "id": "n3", "name": "AI Answer", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-380, 300] },
+    { "parameters": { "respondWith": "json", "responseBody": "={{ { \"answer\": $json.message.content.answer, \"escalate\": $json.message.content.escalate } }}", "options": {} }, "id": "n4", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [-160, 300] }
+  ],
+  "connections": {
+    "Question Webhook": { "main": [[{ "node": "Load FAQ", "type": "main", "index": 0 }]] },
+    "Load FAQ": { "main": [[{ "node": "AI Answer", "type": "main", "index": 0 }]] },
+    "AI Answer": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "growth-08-faq" }
+}

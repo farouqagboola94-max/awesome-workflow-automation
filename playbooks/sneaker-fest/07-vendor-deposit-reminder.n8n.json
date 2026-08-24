@@ -1,0 +1,18 @@
+{
+  "name": "Sneaker Fest — Vendor Deposit Reminder",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }] } }, "id": "n1", "name": "Daily 09:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-860, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" }, "table": { "__rl": true, "value": "Vendors", "mode": "list" }, "filterByFormula": "={{ \"AND({Status}='Contract Sent', {Deposit Paid}=0, IS_BEFORE({Contract Sent At}, DATEADD(NOW(),-3,'days')))\" }}", "options": {} }, "id": "n2", "name": "Overdue Deposits", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{ $json.fields['Reminders Sent'] || 0 }}", "rightValue": 3, "operator": { "type": "number", "operation": "gte" } } ], "combinator": "and" }, "options": {} }, "id": "n3", "name": "3+ Reminders?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-420, 300] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "sneakerfest-vendors", "mode": "name" }, "text": "=:warning: *{{ $json.fields.Brand }}* hasn't paid their deposit after 3 reminders. Consider releasing the booth. {{ $json.fields['Contact Email'] }}", "otherOptions": {} }, "id": "n4", "name": "Escalate To Team", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [-200, 200] },
+    { "parameters": { "fromEmail": "vendors@sneakerfest.com", "toEmail": "={{ $json.fields['Contact Email'] }}", "subject": "Reminder: your Sneaker Fest booth deposit", "html": "=<p>Hi {{ $json.fields.Brand }}, we haven't received your booth deposit yet. Your spot is held for a limited time — please complete payment here to lock it in:</p><p><a href=\"{{ $json.fields['Invoice URL'] }}\">Pay deposit →</a></p>", "options": {} }, "id": "n5", "name": "Send Reminder", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-200, 400] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" }, "table": { "__rl": true, "value": "Vendors", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $json.id }}", "Reminders Sent": "={{ ($json.fields['Reminders Sent'] || 0) + 1 }}", "Last Reminder At": "={{ $now.toISO() }}" } }, "options": {} }, "id": "n6", "name": "Increment Reminder Count", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [20, 400] }
+  ],
+  "connections": {
+    "Daily 09:00": { "main": [[{ "node": "Overdue Deposits", "type": "main", "index": 0 }]] },
+    "Overdue Deposits": { "main": [[{ "node": "3+ Reminders?", "type": "main", "index": 0 }]] },
+    "3+ Reminders?": { "main": [[{ "node": "Escalate To Team", "type": "main", "index": 0 }], [{ "node": "Send Reminder", "type": "main", "index": 0 }]] },
+    "Send Reminder": { "main": [[{ "node": "Increment Reminder Count", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "sneakerfest-07-deposit-reminder" }
+}

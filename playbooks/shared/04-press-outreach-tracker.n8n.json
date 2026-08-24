@@ -1,0 +1,17 @@
+{
+  "name": "Shared — Press / Influencer Outreach Tracker",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] } }, "id": "n1", "name": "Every 6h", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-860, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Outreach", "mode": "list" }, "filterByFormula": "={{ \"AND({Stage}='Queued')\" }}", "options": {} }, "id": "n2", "name": "Get Queued Contacts", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 300] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Write a short, personalized outreach email (max 90 words) to a journalist/influencer about our event. Reference their beat. Return strict JSON: {\"subject\":\"..\",\"body\":\"..\"}.", "role": "system" }, { "content": "=Name: {{ $json.fields.Name }}, Outlet: {{ $json.fields.Outlet }}, Beat: {{ $json.fields.Beat }}, Event: {{ $json.fields.Event }}" } ] }, "jsonOutput": true, "options": { "temperature": 0.4 } }, "id": "n3", "name": "Draft Personalized Email", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-420, 300] },
+    { "parameters": { "fromEmail": "press@example.com", "toEmail": "={{ $('Get Queued Contacts').item.json.fields.Email }}", "subject": "={{ $json.message.content.subject }}", "html": "={{ $json.message.content.body }}", "options": {} }, "id": "n4", "name": "Send Outreach", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-200, 300] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Outreach", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $('Get Queued Contacts').item.json.id }}", "Stage": "Contacted", "Contacted At": "={{ $now.toISO() }}" } }, "options": {} }, "id": "n5", "name": "Mark Contacted", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [20, 300] }
+  ],
+  "connections": {
+    "Every 6h": { "main": [[{ "node": "Get Queued Contacts", "type": "main", "index": 0 }]] },
+    "Get Queued Contacts": { "main": [[{ "node": "Draft Personalized Email", "type": "main", "index": 0 }]] },
+    "Draft Personalized Email": { "main": [[{ "node": "Send Outreach", "type": "main", "index": 0 }]] },
+    "Send Outreach": { "main": [[{ "node": "Mark Contacted", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "shared-04-outreach" }
+}

@@ -1,0 +1,168 @@
+{
+  "name": "Sneaker Fest — Door Check-In & Live Capacity",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sneakerfest-checkin",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-scan-webhook",
+      "name": "QR Scan Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-860, 300],
+      "webhookId": "sneakerfest-checkin"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decode the QR token minted at purchase (base64url of orderId:email)\nconst b = $input.first().json.body || $input.first().json;\nconst token = (b.token || '').trim();\nif (!token) throw new Error('NO_TOKEN');\nlet decoded = '';\ntry { decoded = Buffer.from(token, 'base64url').toString('utf8'); } catch (e) { throw new Error('BAD_TOKEN'); }\nconst [orderId, email] = decoded.split(':');\nreturn [{ json: { token, orderId, email, gate: b.gate || 'main', scannedAt: new Date().toISOString() } }];"
+      },
+      "id": "node-decode",
+      "name": "Decode QR Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-640, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Attendees", "mode": "list" },
+        "filterByFormula": "={{ \"{QR Token} = '\" + $json.token + \"'\" }}",
+        "options": {}
+      },
+      "id": "node-lookup",
+      "name": "Look Up Ticket",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-420, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.id }}",
+                    "rightValue": "",
+                    "operator": { "type": "string", "operation": "empty", "singleValue": true }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "invalid"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.fields['Checked In'] }}",
+                    "rightValue": "true",
+                    "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "already_in"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "node-gate",
+      "name": "Valid / Duplicate / OK",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 404,
+        "responseBody": "={{ { \"status\": \"invalid\", \"message\": \"Ticket not found — send to box office\" } }}",
+        "options": {}
+      },
+      "id": "node-resp-invalid",
+      "name": "Reject: Invalid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [40, 120]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 409,
+        "responseBody": "={{ { \"status\": \"already_checked_in\", \"name\": $json.fields.Name, \"message\": \"Already scanned — possible duplicate\" } }}",
+        "options": {}
+      },
+      "id": "node-resp-dup",
+      "name": "Reject: Duplicate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [40, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" },
+        "table": { "__rl": true, "value": "Attendees", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Checked In": true,
+            "Checked In At": "={{ $('Decode QR Token').item.json.scannedAt }}",
+            "Gate": "={{ $('Decode QR Token').item.json.gate }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-mark-in",
+      "name": "Mark Checked In",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [40, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ok\", \"name\": $json.fields.Name, \"tier\": $json.fields['Ticket Tier'], \"perks\": ($json.fields['Ticket Tier'] === 'VIP' ? 'VIP lounge + early drop access' : 'Enjoy the show') } }}",
+        "options": {}
+      },
+      "id": "node-resp-ok",
+      "name": "Accept: Welcome",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [280, 480]
+    },
+    {
+      "parameters": {
+        "content": "## Live capacity\nWire an Airtable **Count** (rollup of `Checked In = true`) to a wall dashboard, or add a Slack node here posting a running total each scan for fire-safety headcount.",
+        "height": 200,
+        "width": 300
+      },
+      "id": "node-note",
+      "name": "Note: Capacity",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [280, 620]
+    }
+  ],
+  "connections": {
+    "QR Scan Webhook": { "main": [[{ "node": "Decode QR Token", "type": "main", "index": 0 }]] },
+    "Decode QR Token": { "main": [[{ "node": "Look Up Ticket", "type": "main", "index": 0 }]] },
+    "Look Up Ticket": { "main": [[{ "node": "Valid / Duplicate / OK", "type": "main", "index": 0 }]] },
+    "Valid / Duplicate / OK": { "main": [[{ "node": "Reject: Invalid", "type": "main", "index": 0 }], [{ "node": "Reject: Duplicate", "type": "main", "index": 0 }], [{ "node": "Mark Checked In", "type": "main", "index": 0 }]] },
+    "Mark Checked In": { "main": [[{ "node": "Accept: Welcome", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "sneakerfest-06-checkin" }
+}

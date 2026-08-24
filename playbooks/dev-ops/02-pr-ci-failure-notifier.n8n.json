@@ -1,0 +1,17 @@
+{
+  "name": "Dev-Ops — PR CI Failure Notifier",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "gh-ci-status", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "CI Status Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-820, 300], "webhookId": "gh-ci-status" },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.body.action }}", "rightValue": "completed", "operator": { "type": "string", "operation": "equals" } }, { "leftValue": "={{ $json.body.workflow_run.conclusion }}", "rightValue": "failure", "operator": { "type": "string", "operation": "equals" } } ], "combinator": "and" }, "options": {} }, "id": "n2", "name": "CI Failed?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-600, 300] },
+    { "parameters": { "url": "={{ $json.body.workflow_run.logs_url }}", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "options": {} }, "id": "n3", "name": "Fetch Run Logs", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [-380, 220] },
+    { "parameters": { "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" }, "messages": { "values": [ { "content": "Summarize this CI failure log into: the failing step, the root-cause line, and a one-line suggested fix. Be terse. Return plain text.", "role": "system" }, { "content": "={{ $json.data ? String($json.data).slice(-4000) : $json }}" } ] }, "options": { "temperature": 0 } }, "id": "n4", "name": "Summarize Failure", "type": "@n8n/n8n-nodes-langchain.openAi", "typeVersion": 1.8, "position": [-160, 220] },
+    { "parameters": { "authentication": "oAuth2", "select": "channel", "channelId": { "__rl": true, "value": "ci-alerts", "mode": "name" }, "text": "=:x: CI failed on *{{ $('CI Status Webhook').item.json.body.repository.full_name }}* ({{ $('CI Status Webhook').item.json.body.workflow_run.head_branch }})\n{{ $json.message.content }}\n<{{ $('CI Status Webhook').item.json.body.workflow_run.html_url }}|View run>", "otherOptions": {} }, "id": "n5", "name": "Notify #ci-alerts", "type": "n8n-nodes-base.slack", "typeVersion": 2.2, "position": [80, 220] }
+  ],
+  "connections": {
+    "CI Status Webhook": { "main": [[{ "node": "CI Failed?", "type": "main", "index": 0 }]] },
+    "CI Failed?": { "main": [[{ "node": "Fetch Run Logs", "type": "main", "index": 0 }], []] },
+    "Fetch Run Logs": { "main": [[{ "node": "Summarize Failure", "type": "main", "index": 0 }]] },
+    "Summarize Failure": { "main": [[{ "node": "Notify #ci-alerts", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "devops-02-ci-notifier" }
+}

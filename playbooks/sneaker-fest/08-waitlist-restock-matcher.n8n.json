@@ -1,0 +1,19 @@
+{
+  "name": "Sneaker Fest — Waitlist Restock Matcher (by size)",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "sneakerfest-restock", "responseMode": "lastNode", "options": {} }, "id": "n1", "name": "Restock Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "sneakerfest-restock" },
+    { "parameters": { "jsCode": "const b = $input.first().json.body || $input.first().json;\nreturn [{ json: { handle: b.handle, sizes: (b.available_sizes || b.sizes || []).map(String) } }];" }, "id": "n2", "name": "Parse Restock", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-640, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" }, "table": { "__rl": true, "value": "Waitlist Notify", "mode": "list" }, "filterByFormula": "={{ \"AND({Product Handle}='\" + $json.handle + \"', {Notified}=0)\" }}", "options": {} }, "id": "n3", "name": "Get Product Waiters", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-420, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "loose" }, "conditions": [ { "leftValue": "={{ $('Parse Restock').item.json.sizes }}", "rightValue": "={{ $json.fields['Size'] }}", "operator": { "type": "array", "operation": "contains", "rightType": "any" } } ], "combinator": "and" }, "options": {} }, "id": "n4", "name": "Their Size In Stock?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-200, 300] },
+    { "parameters": { "fromEmail": "drops@sneakerfest.com", "toEmail": "={{ $json.fields.Email }}", "subject": "=Your size is back: {{ $('Parse Restock').item.json.handle }} 👟", "html": "=<p>Good news — size <strong>{{ $json.fields.Size }}</strong> just restocked. These move fast:</p><p><a href=\"https://sneakerfest.com/products/{{ $('Parse Restock').item.json.handle }}\">Grab it →</a></p>", "options": {} }, "id": "n5", "name": "Notify Matched Waiter", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [20, 220] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appSneakerFest", "mode": "id" }, "table": { "__rl": true, "value": "Waitlist Notify", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $json.id }}", "Notified": true, "Notified At": "={{ $now.toISO() }}" } }, "options": {} }, "id": "n6", "name": "Mark Notified", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [240, 220] }
+  ],
+  "connections": {
+    "Restock Webhook": { "main": [[{ "node": "Parse Restock", "type": "main", "index": 0 }]] },
+    "Parse Restock": { "main": [[{ "node": "Get Product Waiters", "type": "main", "index": 0 }]] },
+    "Get Product Waiters": { "main": [[{ "node": "Their Size In Stock?", "type": "main", "index": 0 }]] },
+    "Their Size In Stock?": { "main": [[{ "node": "Notify Matched Waiter", "type": "main", "index": 0 }], []] },
+    "Notify Matched Waiter": { "main": [[{ "node": "Mark Notified", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "sneakerfest-08-restock-matcher" }
+}

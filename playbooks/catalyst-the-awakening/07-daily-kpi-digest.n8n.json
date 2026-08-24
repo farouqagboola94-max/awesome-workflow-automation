@@ -1,0 +1,122 @@
+{
+  "name": "Catalyst — Daily Community & KPI Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * *" }] }
+      },
+      "id": "node-cron",
+      "name": "Every Day 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appCatalystWaitlist", "mode": "id" },
+        "table": { "__rl": true, "value": "Waitlist", "mode": "list" },
+        "filterByFormula": "={{ \"IS_AFTER({Signed Up At}, DATEADD(TODAY(), -1, 'days'))\" }}",
+        "options": {}
+      },
+      "id": "node-signups",
+      "name": "New Signups (24h)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-680, 180]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appCatalystRoadmap", "mode": "id" },
+        "table": { "__rl": true, "value": "Backlog", "mode": "list" },
+        "filterByFormula": "={{ \"IS_AFTER({Created}, DATEADD(TODAY(), -1, 'days'))\" }}",
+        "options": {}
+      },
+      "id": "node-feedback",
+      "name": "New Feedback (24h)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sentry.io/api/0/projects/catalyst/catalyst/stats/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "stat", "value": "received" },
+            { "name": "resolution", "value": "1d" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-errors",
+      "name": "Error Volume (24h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-680, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate the three sources into one digest\nconst signups = $('New Signups (24h)').all();\nconst feedback = $('New Feedback (24h)').all();\nconst errorStats = $('Error Volume (24h)').first().json;\nconst errorCount = Array.isArray(errorStats) ? errorStats.reduce((s, p) => s + (p[1] || 0), 0) : 0;\n\nconst sentiment = feedback.reduce((acc, r) => { const s = (r.json.fields?.Sentiment || 'neutral'); acc[s] = (acc[s] || 0) + 1; return acc; }, {});\nconst bugs = feedback.filter(r => (r.json.fields?.Category) === 'BUG').length;\nconst referred = signups.filter(r => r.json.fields?.['Referred By']).length;\nconst viralPct = signups.length ? Math.round((referred / signups.length) * 100) : 0;\n\nconst topFeedback = feedback.slice(0, 5).map(r => `• ${r.json.fields?.Summary || '—'} (${r.json.fields?.Category})`).join('\\n') || '• none';\n\nreturn [{ json: {\n  date: new Date().toISOString().slice(0, 10),\n  signups: signups.length,\n  viralPct,\n  feedbackCount: feedback.length,\n  bugs,\n  sentiment,\n  errorCount,\n  topFeedback\n} }];"
+      },
+      "id": "node-aggregate",
+      "name": "Aggregate KPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst health = d.errorCount > 5000 ? ':red_circle:' : d.errorCount > 1000 ? ':large_yellow_circle:' : ':large_green_circle:';\nconst text = `*Catalyst Daily — ${d.date}*\\n\\n:busts_in_silhouette: *Waitlist:* +${d.signups} new (${d.viralPct}% via referral)\\n:speech_balloon: *Feedback:* ${d.feedbackCount} items · ${d.bugs} bugs\\n:bar_chart: *Sentiment:* +${d.sentiment.positive||0} / ~${d.sentiment.neutral||0} / -${d.sentiment.negative||0}\\n${health} *Errors (24h):* ${d.errorCount}\\n\\n*Top feedback:*\\n${d.topFeedback}`;\nreturn [{ json: { text, ...d } }];"
+      },
+      "id": "node-format",
+      "name": "Format Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "catalyst-standup", "mode": "name" },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "node-slack",
+      "name": "Post To #standup",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [40, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "digest@catalyst-game.com",
+        "toEmail": "={{ $env.CATALYST_LEADERSHIP_EMAILS }}",
+        "subject": "=Catalyst Daily — {{ $json.date }}",
+        "html": "=<pre style=\"font-family:inherit\">{{ $json.text }}</pre>",
+        "options": {}
+      },
+      "id": "node-email",
+      "name": "Email Leadership",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [40, 400]
+    }
+  ],
+  "connections": {
+    "Every Day 08:00": { "main": [[{ "node": "New Signups (24h)", "type": "main", "index": 0 }, { "node": "New Feedback (24h)", "type": "main", "index": 0 }, { "node": "Error Volume (24h)", "type": "main", "index": 0 }]] },
+    "Error Volume (24h)": { "main": [[{ "node": "Aggregate KPIs", "type": "main", "index": 0 }]] },
+    "Aggregate KPIs": { "main": [[{ "node": "Format Digest", "type": "main", "index": 0 }]] },
+    "Format Digest": { "main": [[{ "node": "Post To #standup", "type": "main", "index": 0 }, { "node": "Email Leadership", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "catalyst-07-digest" }
+}

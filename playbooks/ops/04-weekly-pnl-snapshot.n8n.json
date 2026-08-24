@@ -1,0 +1,16 @@
+{
+  "name": "Ops — Weekly P&L Snapshot",
+  "nodes": [
+    { "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1" }] } }, "id": "n1", "name": "Weekly Mon 08:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [-820, 300] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Orders", "mode": "list" }, "options": {} }, "id": "n2", "name": "Revenue", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 220] },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appShared", "mode": "id" }, "table": { "__rl": true, "value": "Expenses", "mode": "list" }, "options": {} }, "id": "n3", "name": "Expenses", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-600, 380] },
+    { "parameters": { "jsCode": "const rev=$('Revenue').all().reduce((s,r)=>s+Number(r.json.fields?.Amount||0),0);const exp=$('Expenses').all().reduce((s,r)=>s+Number(r.json.fields?.Amount||0),0);return [{json:{rev,exp,net:rev-exp}}];" }, "id": "n4", "name": "Compute P&L", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [-380, 300] },
+    { "parameters": { "fromEmail": "finance@example.com", "toEmail": "={{ $env.FINANCE_EMAILS }}", "subject": "=Weekly P&L — {{ $now.toFormat('yyyy-MM-dd') }}", "html": "=<p>Revenue: {{ $json.rev }}<br>Expenses: {{ $json.exp }}<br><strong>Net: {{ $json.net }}</strong></p>", "options": {} }, "id": "n5", "name": "Email P&L", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [-160, 300] }
+  ],
+  "connections": {
+    "Weekly Mon 08:00": { "main": [[{ "node": "Revenue", "type": "main", "index": 0 }, { "node": "Expenses", "type": "main", "index": 0 }]] },
+    "Expenses": { "main": [[{ "node": "Compute P&L", "type": "main", "index": 0 }]] },
+    "Compute P&L": { "main": [[{ "node": "Email P&L", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "ops-04-pnl" }
+}

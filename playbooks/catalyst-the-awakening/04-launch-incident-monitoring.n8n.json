@@ -1,0 +1,147 @@
+{
+  "name": "Catalyst — Launch-Day Incident Monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "catalyst-sentry-alert",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-sentry-webhook",
+      "name": "Sentry Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-780, 300],
+      "webhookId": "catalyst-sentry-alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise Sentry payload + derive severity from event volume\nconst d = $input.first().json.body?.data?.event || $input.first().json.body || {};\nconst count = Number(d.count || d.timesSeen || 1);\nconst level = d.level || 'error';\nlet severity = 'low';\nif (count >= 500 || level === 'fatal') severity = 'critical';\nelse if (count >= 100) severity = 'high';\nelse if (count >= 25) severity = 'medium';\nreturn [{ json: {\n  title: d.title || d.metadata?.value || 'Unknown error',\n  culprit: d.culprit || d.transaction || 'unknown',\n  count,\n  level,\n  severity,\n  permalink: d.web_url || d.issue_url || 'https://sentry.io',\n  environment: d.environment || 'production',\n  firstSeen: new Date().toISOString()\n} }];"
+      },
+      "id": "node-severity",
+      "name": "Compute Severity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "high,critical",
+              "operator": { "type": "string", "operation": "regex" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-actionable",
+      "name": "Actionable Severity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-340, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "catalyst-warroom", "mode": "name" },
+        "text": "=:rotating_light: *{{ $json.severity.toUpperCase() }}* incident on *{{ $json.environment }}*\n*{{ $json.title }}*\nSeen *{{ $json.count }}×* · culprit `{{ $json.culprit }}`\n<{{ $json.permalink }}|Open in Sentry>",
+        "otherOptions": {}
+      },
+      "id": "node-slack-alert",
+      "name": "Alert #war-room",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [-100, 200]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "issue",
+        "operation": "create",
+        "project": { "__rl": true, "value": "CATALYST", "mode": "list" },
+        "summary": "=[{{ $json.severity.toUpperCase() }}] {{ $json.title }}",
+        "issueType": { "__rl": true, "value": "Bug", "mode": "name" },
+        "additionalFields": {
+          "description": "=Auto-created from Sentry.\nCulprit: {{ $json.culprit }}\nCount: {{ $json.count }}\nEnv: {{ $json.environment }}\nLink: {{ $json.permalink }}",
+          "priority": { "__rl": true, "value": "={{ $json.severity === 'critical' ? 'Highest' : 'High' }}", "mode": "name" }
+        }
+      },
+      "id": "node-create-ticket",
+      "name": "Create Jira Ticket",
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [-100, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.statuspage.io/v1/pages/{{ $env.STATUSPAGE_PAGE_ID }}/incidents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"incident\": { \"name\": $json.title, \"status\": \"investigating\", \"impact_override\": ($json.severity === 'critical' ? 'critical' : 'major'), \"body\": \"We are investigating an issue affecting some players. Updates to follow.\" } } }}",
+        "options": {}
+      },
+      "id": "node-statuspage",
+      "name": "Post Status Page Incident",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-100, 480]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Compute Severity').item.json.severity }}",
+              "rightValue": "critical",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-critical",
+      "name": "Critical → Page On-Call?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [160, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://events.pagerduty.com/v2/enqueue",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"routing_key\": $env.PAGERDUTY_ROUTING_KEY, \"event_action\": \"trigger\", \"payload\": { \"summary\": $('Compute Severity').item.json.title, \"severity\": \"critical\", \"source\": \"catalyst-sentry\" } } }}",
+        "options": {}
+      },
+      "id": "node-pagerduty",
+      "name": "Page On-Call (PagerDuty)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 260]
+    }
+  ],
+  "connections": {
+    "Sentry Alert Webhook": { "main": [[{ "node": "Compute Severity", "type": "main", "index": 0 }]] },
+    "Compute Severity": { "main": [[{ "node": "Actionable Severity?", "type": "main", "index": 0 }]] },
+    "Actionable Severity?": { "main": [[{ "node": "Alert #war-room", "type": "main", "index": 0 }, { "node": "Create Jira Ticket", "type": "main", "index": 0 }, { "node": "Post Status Page Incident", "type": "main", "index": 0 }], []] },
+    "Alert #war-room": { "main": [[{ "node": "Critical → Page On-Call?", "type": "main", "index": 0 }]] },
+    "Critical → Page On-Call?": { "main": [[{ "node": "Page On-Call (PagerDuty)", "type": "main", "index": 0 }], []] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "catalyst-04-incident" }
+}

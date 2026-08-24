@@ -1,0 +1,201 @@
+{
+  "name": "Catalyst — Creator / Streamer Key Distribution",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "catalyst-creator-apply",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Creator Application Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-880, 300],
+      "webhookId": "catalyst-creator-apply"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pull channel stats from the submitted platform URL (stub: expects prefetched metrics)\nconst b = $input.first().json.body || $input.first().json;\nconst followers = Number(b.followers || 0);\nconst avgViews = Number(b.avg_views || 0);\nconst platform = (b.platform || 'twitch').toLowerCase();\nreturn [{ json: {\n  email: (b.email || '').trim().toLowerCase(),\n  handle: b.handle || '',\n  platform, followers, avgViews,\n  url: b.channel_url || '',\n  region: b.region || 'NA',\n  appliedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "node-normalize",
+      "name": "Normalize Application",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-660, 300]
+    },
+    {
+      "parameters": {
+        "modelId": { "__rl": true, "value": "gpt-4o-mini", "mode": "list" },
+        "messages": {
+          "values": [
+            {
+              "content": "You vet content creators for a game's early-key program. Judge audience fit and authenticity. Return strict JSON: {\"tier\":\"A|B|C|reject\",\"reason\":\"one line\",\"riskFlags\":[\"..\"]}. Tier A = strong gaming audience, real engagement. Tier C = small but genuine. reject = bot-like, off-topic, or engagement-farming. Flag mismatched follower/view ratios as risk.",
+              "role": "system"
+            },
+            {
+              "content": "=platform: {{ $json.platform }}, handle: {{ $json.handle }}, followers: {{ $json.followers }}, avg_views: {{ $json.avgViews }}, url: {{ $json.url }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": { "temperature": 0 }
+      },
+      "id": "node-ai-vet",
+      "name": "AI Vet Creator",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [-440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.content.tier }}",
+              "rightValue": "reject",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-approved",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-220, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appCatalystKeys", "mode": "id" },
+        "table": { "__rl": true, "value": "Key Pool", "mode": "list" },
+        "filterByFormula": "={{ \"{Status} = 'Available'\" }}",
+        "options": { "limit": 1, "sort": { "property": [{ "field": "Created", "direction": "asc" }] } }
+      },
+      "id": "node-get-key",
+      "name": "Reserve Key From Pool",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-key",
+      "name": "Key Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [220, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appCatalystKeys", "mode": "id" },
+        "table": { "__rl": true, "value": "Key Pool", "mode": "list" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Status": "Assigned",
+            "Assigned To": "={{ $('Normalize Application').item.json.email }}",
+            "Creator Tier": "={{ $('AI Vet Creator').item.json.message.content.tier }}",
+            "Assigned At": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-assign-key",
+      "name": "Mark Key Assigned",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [440, 120]
+    },
+    {
+      "parameters": {
+        "fromEmail": "creators@catalyst-game.com",
+        "toEmail": "={{ $('Normalize Application').item.json.email }}",
+        "subject": "Your Catalyst creator key is inside ⚡🎮",
+        "html": "=<h1>Welcome to the Catalyst Creator Program</h1><p>You're in as a <strong>Tier {{ $('AI Vet Creator').item.json.message.content.tier }}</strong> creator.</p><p>Your key: <code>{{ $json.fields['Key'] }}</code></p><h3>Embargo & terms</h3><ul><li>Coverage embargo lifts on launch day, 9:00 AM PT. Nothing public before then.</li><li>Add <a href=\"https://catalyst-game.com/creator-kit\">#CatalystPartner</a> disclosure to sponsored posts.</li><li>Press kit, key art, and B-roll: <a href=\"https://catalyst-game.com/creator-kit\">creator kit →</a></li></ul>",
+        "options": {}
+      },
+      "id": "node-send-key",
+      "name": "Send Key + Embargo Terms",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [660, 120]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": { "__rl": true, "value": "catalyst-creators", "mode": "name" },
+        "text": "=:video_game: Out of keys! Tier {{ $('AI Vet Creator').item.json.message.content.tier }} creator {{ $('Normalize Application').item.json.handle }} approved but the pool is empty — top it up.",
+        "otherOptions": {}
+      },
+      "id": "node-out-of-keys",
+      "name": "Alert: Key Pool Empty",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "creators@catalyst-game.com",
+        "toEmail": "={{ $('Normalize Application').item.json.email }}",
+        "subject": "Update on your Catalyst creator application",
+        "html": "<p>Thanks for your interest in the Catalyst Creator Program. We can't offer a key this round, but the program reopens post-launch — we'd love to have you then.</p>",
+        "options": {}
+      },
+      "id": "node-decline",
+      "name": "Send Decline",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [0, 460]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\" } }}",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Acknowledge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [880, 300]
+    }
+  ],
+  "connections": {
+    "Creator Application Webhook": { "main": [[{ "node": "Normalize Application", "type": "main", "index": 0 }]] },
+    "Normalize Application": { "main": [[{ "node": "AI Vet Creator", "type": "main", "index": 0 }]] },
+    "AI Vet Creator": { "main": [[{ "node": "Approved?", "type": "main", "index": 0 }]] },
+    "Approved?": { "main": [[{ "node": "Reserve Key From Pool", "type": "main", "index": 0 }], [{ "node": "Send Decline", "type": "main", "index": 0 }]] },
+    "Reserve Key From Pool": { "main": [[{ "node": "Key Available?", "type": "main", "index": 0 }]] },
+    "Key Available?": { "main": [[{ "node": "Mark Key Assigned", "type": "main", "index": 0 }], [{ "node": "Alert: Key Pool Empty", "type": "main", "index": 0 }]] },
+    "Mark Key Assigned": { "main": [[{ "node": "Send Key + Embargo Terms", "type": "main", "index": 0 }]] },
+    "Send Key + Embargo Terms": { "main": [[{ "node": "Acknowledge", "type": "main", "index": 0 }]] },
+    "Alert: Key Pool Empty": { "main": [[{ "node": "Acknowledge", "type": "main", "index": 0 }]] },
+    "Send Decline": { "main": [[{ "node": "Acknowledge", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateId": "catalyst-06-creator-keys" }
+}

@@ -29,6 +29,7 @@ A curated, comprehensive collection of **workflow automation software**, **AI ag
 - [📊 Data Pipeline & Workflow Orchestration](#-data-pipeline--workflow-orchestration)
 - [📋 Project Management with Automation](#-project-management-with-automation)
 - [🗺️ Visual Mapping & Diagramming](#-visual-mapping--diagramming)
+- [🎪 Event Automation Playbooks](#-event-automation-playbooks)
 - [📝 Articles & Guides](#-articles--guides)
 - [📘 Books](#-books)
 - [🎥 Video Tutorials & Courses](#-video-tutorials--courses)
@@ -382,6 +383,24 @@ Key stats:
 - **[Miro](https://miro.com/)** — Collaborative online whiteboard with workflow visualization and AI features.
 
 - **[draw.io](https://www.drawio.com/)** — Free, open-source diagramming for workflows, architecture diagrams, and flowcharts.
+
+---
+
+## 🎪 Event Automation Playbooks
+
+> **33 ready-to-import, end-to-end workflows** for real events and the repos themselves — built on n8n, mappable 1:1 to Make or Zapier. Not just diagrams: webhook triggers, branching logic, AI classification/triage, dedupe, and multi-channel fan-out are all implemented. Full index in **[AUTOMATIONS.md](./playbooks/AUTOMATIONS.md)**; browse **[playbooks/](./playbooks/)**.
+
+- **[⚡ Catalyst: The Awakening](./playbooks/catalyst-the-awakening/)** — 10 workflows for a game / immersive-experience launch: waitlist funnel, AI community moderation, devlog publishing, incident response, feedback→roadmap loop, creator-key distribution, daily KPI digest, playtest scheduler, bug→Discord threads, and churn win-back.
+
+- **[👟 Sneaker Fest](./playbooks/sneaker-fest/)** — 9 workflows for a sneaker convention: ticket onboarding, AI-screened vendor/booth intake, drop/restock alerts, UGC aggregation, post-event nurture, door check-in, deposit reminders, size-aware restock matching, and event-day support.
+
+- **[🛠️ Dev-Ops](./playbooks/dev-ops/)** — 8 workflows that maintain the repos: issue AI triage, CI-failure alerts, release notes on tag, stale sweeper, awesome-list dead-link checker, contribution format lint, contributor welcome, and a council-agent convention validator.
+
+- **[🔁 Shared](./playbooks/shared/)** — 6 cross-event workflows: abandoned-checkout recovery, AI support routing, sponsor lead intake, press outreach, social scheduling, and email bounce handling.
+
+- **[💼 Ops](./playbooks/ops/)** — 10 back-office workflows: auto-invoicing, daily revenue reconciliation, expense-receipt capture, weekly P&L, contract reminders, Airtable→Sheets backup, KPI anomaly alerts, lead scoring/routing, duplicate cleanup, and a cross-project digest.
+
+- **[📣 Growth](./playbooks/growth/)** — 10 content/marketing workflows: devlog→SEO+social repurposing, weekly content-calendar generation, Instagram scheduling, YouTube cross-promotion, review requests, inbox triage with auto-drafts, meeting-notes→tasks, FAQ auto-responder, newsletter compile, and testimonial→social.
 
 ---
 

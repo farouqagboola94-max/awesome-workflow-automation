@@ -1,0 +1,20 @@
+{
+  "name": "Catalyst — Playtest Scheduler",
+  "nodes": [
+    { "parameters": { "httpMethod": "POST", "path": "catalyst-playtest-signup", "responseMode": "responseNode", "options": {} }, "id": "n1", "name": "Playtest Signup Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 1.1, "position": [-860, 300], "webhookId": "catalyst-playtest-signup" },
+    { "parameters": { "operation": "search", "base": { "__rl": true, "value": "appCatalystPlaytest", "mode": "id" }, "table": { "__rl": true, "value": "Slots", "mode": "list" }, "filterByFormula": "={{ \"AND({Status}='Open', {Seats Left}>0)\" }}", "options": { "limit": 1, "sort": { "property": [{ "field": "Starts At", "direction": "asc" }] } } }, "id": "n2", "name": "Find Open Slot", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-640, 300] },
+    { "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [ { "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } } ], "combinator": "and" }, "options": {} }, "id": "n3", "name": "Slot Available?", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [-420, 300] },
+    { "parameters": { "operation": "update", "base": { "__rl": true, "value": "appCatalystPlaytest", "mode": "id" }, "table": { "__rl": true, "value": "Slots", "mode": "list" }, "columns": { "mappingMode": "defineBelow", "value": { "id": "={{ $json.id }}", "Seats Left": "={{ $json.fields['Seats Left'] - 1 }}" } }, "options": {} }, "id": "n4", "name": "Reserve Seat", "type": "n8n-nodes-base.airtable", "typeVersion": 2.1, "position": [-200, 220] },
+    { "parameters": { "fromEmail": "playtest@catalyst-game.com", "toEmail": "={{ $('Playtest Signup Webhook').item.json.body.email }}", "subject": "Your Catalyst playtest is booked 🎮", "html": "=<p>You're in for the playtest on <strong>{{ $json.fields['Starts At'] }}</strong>.</p><p>Build + NDA + Discord voice link: <a href=\"{{ $json.fields['Session URL'] }}\">join here at start time →</a></p><p>Add to calendar and we'll send a reminder 1 hour before.</p>", "options": {} }, "id": "n5", "name": "Send Confirmation", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [20, 220] },
+    { "parameters": { "respondWith": "json", "responseBody": "={{ { \"status\": \"booked\", \"startsAt\": $('Find Open Slot').item.json.fields['Starts At'] } }}", "options": {} }, "id": "n6", "name": "Confirm To User", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [240, 220] },
+    { "parameters": { "respondWith": "json", "responseCode": 200, "responseBody": "={{ { \"status\": \"waitlisted\", \"message\": \"All slots full — you're on the waitlist.\" } }}", "options": {} }, "id": "n7", "name": "Waitlist Response", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [-200, 420] }
+  ],
+  "connections": {
+    "Playtest Signup Webhook": { "main": [[{ "node": "Find Open Slot", "type": "main", "index": 0 }]] },
+    "Find Open Slot": { "main": [[{ "node": "Slot Available?", "type": "main", "index": 0 }]] },
+    "Slot Available?": { "main": [[{ "node": "Reserve Seat", "type": "main", "index": 0 }], [{ "node": "Waitlist Response", "type": "main", "index": 0 }]] },
+    "Reserve Seat": { "main": [[{ "node": "Send Confirmation", "type": "main", "index": 0 }]] },
+    "Send Confirmation": { "main": [[{ "node": "Confirm To User", "type": "main", "index": 0 }]] }
+  },
+  "active": false, "settings": { "executionOrder": "v1" }, "pinData": {}, "meta": { "templateId": "catalyst-08-playtest" }
+}
